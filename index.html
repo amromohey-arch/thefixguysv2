@@ -659,17 +659,51 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 <div id="pg-setup" class="page" style="display:none">
 
   <div class="pg-title">Setup</div>
-  <div class="pg-sub">Connect to Google Sheets and Google Drive — one time only.</div>
+  <div class="pg-sub">Connect Google AI and Google Sheets — one time only.</div>
 
+  <!-- Gemini Key -->
   <div class="setup-card">
-    <h3>Receipt Scanner</h3>
+    <h3>Google AI — Receipt Scanner Key</h3>
     <div class="setup-steps">
-      The receipt scanner works automatically through Google Apps Script — no extra API key needed.
-      Just make sure your Apps Script URL is saved below and the updated script is deployed.
+      Get a free key from Google to power the receipt scanner:
+      <ol>
+        <li>Go to <strong>aistudio.google.com/apikey</strong></li>
+        <li>Sign in with your Fix Guys Gmail</li>
+        <li>Click <strong>Create API Key → Create API key in new project</strong></li>
+        <li>Copy the key and paste it below</li>
+      </ol>
       <div style="margin-top:10px;padding:10px 12px;background:var(--grn-l);border-radius:var(--r);border:1px solid var(--grn-b);font-size:12px;color:#14532d">
-        ✓ <strong>No API key required</strong> — scanning runs through Google's servers automatically.
+        ✓ Completely free — no credit card needed. More than enough for daily use.
       </div>
     </div>
+    <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gd);margin-top:14px;margin-bottom:5px">Gemini API Key</label>
+    <input type="password" class="url-inp" id="gemini-inp" placeholder="AIzaSy...">
+    <br>
+    <button class="btn-save" onclick="saveGeminiKey()">Save Key</button>
+    <span class="saved-lbl" id="gemini-saved-lbl">✓ Saved</span>
+    <div id="gemini-status" style="margin-top:10px"></div>
+  </div>
+
+  <div class="setup-card">
+    <h3>Receipt Scanner — Google AI Key</h3>
+    <div class="setup-steps">
+      The receipt scanner uses Google's free Gemini AI to read your till receipt.
+      <ol>
+        <li>Go to <strong>aistudio.google.com/apikey</strong></li>
+        <li>Sign in with your Google account</li>
+        <li>Click <strong>Create API key → Create API key in new project</strong></li>
+        <li>Copy the key and paste it below</li>
+      </ol>
+      <div style="margin-top:10px;padding:10px 12px;background:var(--grn-l);border-radius:var(--r);border:1px solid var(--grn-b);font-size:12px;color:#14532d">
+        ✓ Free — no credit card needed. Key is saved only on this device.
+      </div>
+    </div>
+    <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gd);margin-top:14px;margin-bottom:5px">Gemini API Key</label>
+    <input type="password" class="url-inp" id="gemini-inp" placeholder="AIza...">
+    <br>
+    <button class="btn-save" onclick="saveGeminiKey()">Save Key</button>
+    <span class="saved-lbl" id="gemini-saved-lbl">✓ Saved</span>
+    <div id="gemini-status" style="margin-top:10px"></div>
   </div>
 
   <div class="setup-card">
@@ -805,7 +839,6 @@ function showApp(name) {
   window.scrollTo(0,0);
   if (name==='history' && typeof setView === 'function') setView('month');
 }
-
 // ═══════════════════════════════
 //  DEPARTMENTS — exact from till
 // ═══════════════════════════════
@@ -834,6 +867,8 @@ var MONTHS = ['January','February','March','April','May','June',
 var DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
 var scriptUrl  = localStorage.getItem('tfg_url')      || '';
+var geminiKey  = localStorage.getItem('tfg_gemini')   || '';
+var geminiKey  = localStorage.getItem('tfg_gemini')   || '';
 var salesData  = JSON.parse(localStorage.getItem('tfg_data') || '[]');
 var receiptB64 = null;  // base64 of uploaded receipt image
 var scannedData = null; // parsed data from AI scan
@@ -895,44 +930,61 @@ function handleImage(input) {
 async function scanReceipt() {
   if (!receiptB64) return;
 
-  if (!scriptUrl) {
-    alert('Apps Script URL not saved.\n\nGo to Setup and save your URL first.');
+  if (!geminiKey) {
+    alert('Gemini API key not saved.\n\nGo to Setup tab and paste your Gemini API key.');
     return;
   }
 
   var btn = document.getElementById('btn-scan');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Scanning with AI...';
+  btn.innerHTML = '<span class="spinner"></span>Reading receipt...';
+
+  var prompt = 'This is a till receipt from The Fix Guys shop in Erina Fair, Australia. ' +
+    'The departments on the receipt use these codes: ' +
+    'D01=Batteries, D02=Watch Bands, D03=Transponders, D04=Remotes, D05=Glue, ' +
+    'D06=House Keys, D07=Heels & Soles, D08=Patching, D09=Giftware, D10=Engraving, ' +
+    'D11=Shoecare, D12=Shell, D13=Sharpening, D14=Watch Repairs, D15=Miscellaneous, ' +
+    'D16=Stitching, D17=Stitch. ' +
+    'For each department code that appears on the receipt, extract: ' +
+    '(1) the quantity — the number after the letter Q on the same line as the dept code, ' +
+    '(2) the dollar amount — the number starting with * on the NEXT line (remove the asterisk). ' +
+    'Also extract: CASH amount (the * number on the CASH line), ' +
+    'CREDIT1 amount (the * number on the CREDIT1 line) — this is EFTPOS, ' +
+    'and GUEST count (the number after GUEST). ' +
+    'Return ONLY a raw JSON object with no markdown formatting, no code blocks, no explanation. ' +
+    'Example format: {"departments":{"D01":{"qty":7,"amount":170.00},"D06":{"qty":2,"amount":18.95}},"cash":228.85,"eftpos":180.95,"customers":18}';
 
   try {
-    // Send as GET with URL params — Apps Script doGet handles this
-    // and returns CORS-accessible JSON (no-cors not needed)
-    var params = new URLSearchParams({
-      type:      'scan',
-      imageData: receiptB64,
-      mimeType:  'image/jpeg'
-    });
+    var response = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + geminiKey,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { inline_data: { mime_type: 'image/jpeg', data: receiptB64 } },
+            { text: prompt }
+          ]}],
+          generationConfig: { temperature: 0, maxOutputTokens: 1024 }
+        })
+      }
+    );
 
-    var response = await fetch(scriptUrl + '?' + params.toString(), {
-      method: 'GET',
-      redirect: 'follow'
-    });
+    var data = await response.json();
+    if (data.error) throw new Error(data.error.message);
 
-    if (!response.ok) throw new Error('Server error: ' + response.status);
-
-    var text = await response.text();
+    var text = data.candidates[0].content.parts[0].text;
     text = text.replace(/```json|```/g, '').trim();
 
     var jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Could not read AI response. Make sure Apps Script is deployed with the latest version.');
+    if (!jsonMatch) throw new Error('Could not read receipt data. Try a clearer photo.');
 
     scannedData = JSON.parse(jsonMatch[0]);
-    if (scannedData.error) throw new Error(scannedData.error);
     showScanResult(scannedData);
 
   } catch(err) {
     btn.disabled = false;
-    btn.innerHTML = 'Scan Receipt with AI →';
+    btn.innerHTML = 'Scan Receipt with AI \u2192';
     alert('Scan failed: ' + err.message);
   }
 }
@@ -1187,9 +1239,48 @@ function saveUrl() {
   m.style.display = 'inline';
   setTimeout(function(){ m.style.display='none'; }, 2500);
   checkSetupWarn();
+  if (geminiKey && document.getElementById('gemini-inp')) document.getElementById('gemini-inp').value = geminiKey;
   showConnStatus();
 }
 
+
+function saveGeminiKey() {
+  var val = document.getElementById('gemini-inp').value.trim();
+  if (!val) { alert('Please paste your Gemini API key first.'); return; }
+  geminiKey = val;
+  localStorage.setItem('tfg_gemini', val);
+  var m = document.getElementById('gemini-saved-lbl');
+  m.style.display = 'inline';
+  setTimeout(function(){ m.style.display='none'; }, 2500);
+  showGeminiStatus();
+}
+
+function showGeminiStatus() {
+  var el = document.getElementById('gemini-status');
+  if (!el) return;
+  el.innerHTML = geminiKey
+    ? '<div class="conn-ok">✓ Gemini AI connected — receipt scanner is ready.</div>'
+    : '<div class="conn-warn">⚠️ No key saved. Get a free key at aistudio.google.com/apikey</div>';
+}
+
+function saveGeminiKey() {
+  var val = document.getElementById('gemini-inp').value.trim();
+  if (!val) { alert('Please paste your Gemini API key first.'); return; }
+  geminiKey = val;
+  localStorage.setItem('tfg_gemini', val);
+  var m = document.getElementById('gemini-saved-lbl');
+  m.style.display = 'inline';
+  setTimeout(function(){ m.style.display='none'; }, 2500);
+  showGeminiStatus();
+}
+
+function showGeminiStatus() {
+  var el = document.getElementById('gemini-status');
+  if (!el) return;
+  el.innerHTML = geminiKey
+    ? '<div class="conn-ok">✓ Google AI connected — receipt scanner is ready.</div>'
+    : '<div class="conn-warn">⚠️ No key saved. Paste your Gemini API key above.</div>';
+}
 
 function showConnStatus() {
   var el = document.getElementById('conn-status');
@@ -1330,7 +1421,6 @@ function setGeminiKey() {
   Logger.log('Gemini key saved.');
 }`
 }
-
 var DEPTS = [
   {code:'D01',name:'Batteries'},{code:'D02',name:'Watch Bands'},{code:'D03',name:'Transponders'},
   {code:'D04',name:'Remotes'},{code:'D05',name:'Glue'},{code:'D06',name:'House Keys'},
@@ -1669,7 +1759,6 @@ function closeDetail(){
   if(rangeMode) document.getElementById('range-hint').style.display='inline';
   render();
 }
-
 window.onload = function() {
   var today = new Date().toISOString().split('T')[0];
   var dateEl = document.getElementById('sales-date');
@@ -1680,7 +1769,10 @@ window.onload = function() {
   setScriptCode();
   var urlInp = document.getElementById('url-inp');
   if (urlInp && scriptUrl) urlInp.value = scriptUrl;
+  var gInp = document.getElementById('gemini-inp');
+  if (gInp && geminiKey) gInp.value = geminiKey;
   showConnStatus();
+  showGeminiStatus();
   salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
   lookup = buildLookup();
 };

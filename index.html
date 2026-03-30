@@ -522,7 +522,6 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 </style>
 </head>
 <body>
-
 <div id="app-entry">
 <div class="hdr">
   <div class="hdr-brand">The Fix Guys — Sales</div>
@@ -707,7 +706,6 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 
 </div>
 </div>
-
 <div id="app-history" style="display:none">
 <div class="hdr">
   <div class="hdr-brand">The Fix Guys — Sales</div>
@@ -800,9 +798,7 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
   </div>
 </div>
 </div>
-
 <script>
-// ── APP SWITCHER ──
 function showApp(name) {
   document.getElementById('app-entry').style.display   = name==='entry'   ? 'block' : 'none';
   document.getElementById('app-history').style.display = name==='history' ? 'block' : 'none';
@@ -810,7 +806,6 @@ function showApp(name) {
   if (name==='history' && typeof setView === 'function') setView('month');
 }
 
-// ── ENTRY SCRIPT ──
 // ═══════════════════════════════
 //  DEPARTMENTS — exact from till
 // ═══════════════════════════════
@@ -910,51 +905,26 @@ async function scanReceipt() {
   btn.innerHTML = '<span class="spinner"></span>Scanning with AI...';
 
   try {
-    // Send image to Apps Script — it calls Gemini server-side
-    var response = await fetch(scriptUrl, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'scan',
-        imageData: receiptB64,
-        mimeType: 'image/jpeg'
-      })
+    // Send as GET with URL params — Apps Script doGet handles this
+    // and returns CORS-accessible JSON (no-cors not needed)
+    var params = new URLSearchParams({
+      type:      'scan',
+      imageData: receiptB64,
+      mimeType:  'image/jpeg'
     });
 
-    // no-cors means we can't read the response directly
-    // so we poll for the result via a GET with a timestamp key
-    var scanKey = 'scan_' + Date.now();
-    // Re-send as a readable request using a workaround:
-    // POST with type=scan_readable (script returns JSONP-style via redirect)
-    throw new Error('USE_FORM_METHOD');
-
-  } catch(e) {
-    if (e.message !== 'USE_FORM_METHOD') {
-      btn.disabled = false;
-      btn.innerHTML = 'Scan Receipt with AI →';
-      alert('Scan failed: ' + e.message);
-      return;
-    }
-  }
-
-  // Use fetch with a form-encoded body to bypass CORS for reading response
-  try {
-    var formData = new FormData();
-    formData.append('type', 'scan');
-    formData.append('imageData', receiptB64);
-    formData.append('mimeType', 'image/jpeg');
-
-    var response2 = await fetch(scriptUrl, {
-      method: 'POST',
-      body: formData,
+    var response = await fetch(scriptUrl + '?' + params.toString(), {
+      method: 'GET',
       redirect: 'follow'
     });
 
-    var text = await response2.text();
+    if (!response.ok) throw new Error('Server error: ' + response.status);
+
+    var text = await response.text();
     text = text.replace(/```json|```/g, '').trim();
+
     var jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Could not read AI response. Try again.');
+    if (!jsonMatch) throw new Error('Could not read AI response. Make sure Apps Script is deployed with the latest version.');
 
     scannedData = JSON.parse(jsonMatch[0]);
     if (scannedData.error) throw new Error(scannedData.error);
@@ -963,9 +933,10 @@ async function scanReceipt() {
   } catch(err) {
     btn.disabled = false;
     btn.innerHTML = 'Scan Receipt with AI →';
-    alert('Scan failed: ' + err.message + '\n\nMake sure you have deployed the latest Apps Script version.');
+    alert('Scan failed: ' + err.message);
   }
 }
+
 
 function showScanResult(data) {
   var btn = document.getElementById('btn-scan');
@@ -1235,96 +1206,91 @@ function copyScript() {
 
 function setScriptCode() {
   document.getElementById('script-code').textContent =
-`function doPost(e) {
+`// ── HANDLE GET (receipt scan — readable response with CORS) ──
+function doGet(e) {
   try {
-    var payload;
-
-    // Support both JSON and form-encoded (for CORS-readable responses)
-    if (e.postData.type === 'application/x-www-form-urlencoded' ||
-        e.postData.type.indexOf('multipart') >= 0) {
-      payload = {
-        type:      e.parameter.type,
-        imageData: e.parameter.imageData,
-        mimeType:  e.parameter.mimeType || 'image/jpeg',
-        data:      e.parameter.data ? JSON.parse(e.parameter.data) : null,
-        filename:  e.parameter.filename,
-        date:      e.parameter.date
-      };
-    } else {
-      payload = JSON.parse(e.postData.contents);
-    }
-
-    // ── RECEIPT SCAN → Gemini Vision ──
-    if (payload.type === 'scan') {
-      var prompt = 'This is a till receipt from The Fix Guys shop in Erina Fair, Australia. ' +
-        'Departments: D01=Batteries, D02=Watch Bands, D03=Transponders, D04=Remotes, D05=Glue, ' +
-        'D06=House Keys, D07=Heels & Soles, D08=Patching, D09=Giftware, D10=Engraving, ' +
-        'D11=Shoecare, D12=Shell, D13=Sharpening, D14=Watch Repairs, D15=Miscellaneous, ' +
-        'D16=Stitching, D17=Stitch. ' +
-        'Extract the quantity (Q number) and dollar amount (* number, no asterisk) for each dept. ' +
-        'Also extract CASH, CREDIT1/EFTPOS amounts, and GUEST count. ' +
-        'Return ONLY raw JSON — no markdown, no backticks: ' +
-        '{"departments":{"D01":{"qty":7,"amount":170.00}},"cash":228.85,"eftpos":180.95,"customers":18}';
-
-      var geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-      var apiKey    = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY');
-
-      var reqBody = {
-        contents: [{
-          parts: [
-            { inline_data: { mime_type: payload.mimeType, data: payload.imageData } },
-            { text: prompt }
-          ]
-        }],
-        generationConfig: { temperature: 0, maxOutputTokens: 1024 }
-      };
-
-      var options = {
-        method: 'post',
-        contentType: 'application/json',
-        payload: JSON.stringify(reqBody),
-        muteHttpExceptions: true
-      };
-
-      var geminiResp = UrlFetchApp.fetch(geminiUrl + '?key=' + apiKey, options);
-      var geminiData = JSON.parse(geminiResp.getContentText());
-
-      if (geminiData.error) {
-        return ContentService
-          .createTextOutput(JSON.stringify({error: geminiData.error.message}))
-          .setMimeType(ContentService.MimeType.JSON);
-      }
-
-      var text = geminiData.candidates[0].content.parts[0].text;
-      text = text.replace(/\`\`\`json|\`\`\`/g, '').trim();
-      var jsonMatch = text.match(/\\{[\\s\\S]*\\}/);
-      var result = jsonMatch ? JSON.parse(jsonMatch[0]) : {error: 'Could not parse receipt'};
-
+    if (e.parameter.type === 'scan') {
+      var result = scanReceipt(e.parameter.imageData, e.parameter.mimeType || 'image/jpeg');
       return ContentService
         .createTextOutput(JSON.stringify(result))
         .setMimeType(ContentService.MimeType.JSON);
     }
+    return ContentService.createTextOutput(JSON.stringify({status:'ok'}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({error: err.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
 
-    // ── RECEIPT IMAGE → Google Drive ──
+// ── SCAN RECEIPT WITH GEMINI ──
+function scanReceipt(imageData, mimeType) {
+  var apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY');
+  if (!apiKey) return {error: 'Gemini API key not set. Run setGeminiKey() in Apps Script first.'};
+
+  var prompt = 'This is a till receipt from The Fix Guys shop in Erina Fair, Australia. ' +
+    'Departments: D01=Batteries, D02=Watch Bands, D03=Transponders, D04=Remotes, D05=Glue, ' +
+    'D06=House Keys, D07=Heels & Soles, D08=Patching, D09=Giftware, D10=Engraving, ' +
+    'D11=Shoecare, D12=Shell, D13=Sharpening, D14=Watch Repairs, D15=Miscellaneous, ' +
+    'D16=Stitching, D17=Stitch. ' +
+    'Extract the quantity (the number after Q on the same line as each department code) ' +
+    'and dollar amount (the number after the asterisk * on the next line) for each dept shown. ' +
+    'Also extract: CASH amount (after CASH line), CREDIT1 amount (after CREDIT1 line), and GUEST count (after GUEST line). ' +
+    'Return ONLY raw JSON, no markdown, no backticks: ' +
+    '{"departments":{"D01":{"qty":7,"amount":170.00},"D06":{"qty":2,"amount":18.95}},"cash":228.85,"eftpos":180.95,"customers":18}';
+
+  var geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey;
+
+  var payload = {
+    contents: [{
+      parts: [
+        { inline_data: { mime_type: mimeType, data: imageData } },
+        { text: prompt }
+      ]
+    }],
+    generationConfig: { temperature: 0, maxOutputTokens: 1024 }
+  };
+
+  var options = {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  var response = UrlFetchApp.fetch(geminiUrl, options);
+  var data = JSON.parse(response.getContentText());
+
+  if (data.error) return {error: data.error.message};
+
+  var text = data.candidates[0].content.parts[0].text;
+  text = text.replace(/\`\`\`json|\`\`\`/g, '').trim();
+  var jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return {error: 'Could not parse receipt — try a clearer photo'};
+  return JSON.parse(jsonMatch[0]);
+}
+
+// ── HANDLE POST (sales data + image save) ──
+function doPost(e) {
+  try {
+    var payload = JSON.parse(e.postData.contents);
+
+    // ── RECEIPT IMAGE to Google Drive ──
     if (payload.type === 'image') {
       var folders = DriveApp.getFoldersByName('TFG Daily Receipts');
-      var folder  = folders.hasNext() ? folders.next()
-                                      : DriveApp.createFolder('TFG Daily Receipts');
-      var bytes = Utilities.base64Decode(payload.imageData);
-      var blob  = Utilities.newBlob(bytes, 'image/jpeg', payload.filename || 'receipt.jpg');
+      var folder  = folders.hasNext() ? folders.next() : DriveApp.createFolder('TFG Daily Receipts');
+      var bytes   = Utilities.base64Decode(payload.imageData);
+      var blob    = Utilities.newBlob(bytes, 'image/jpeg', payload.filename || 'receipt.jpg');
       folder.createFile(blob);
       return ContentService
         .createTextOutput(JSON.stringify({status:'ok',type:'image'}))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // ── SALES DATA → Google Sheets ──
+    // ── SALES DATA to Google Sheets ──
     var data  = payload.data || payload;
-    var sheet = SpreadsheetApp.getActiveSpreadsheet()
-                  .getSheetByName('Sales') ||
-                SpreadsheetApp.getActiveSpreadsheet()
-                  .insertSheet('Sales');
-
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sales') ||
+                SpreadsheetApp.getActiveSpreadsheet().insertSheet('Sales');
     var codes = ['D01','D02','D03','D04','D05','D06','D07','D08','D09',
                  'D10','D11','D12','D13','D14','D15','D16','D17'];
     var depts = data.departments || {};
@@ -1335,14 +1301,11 @@ function setScriptCode() {
       sheet.appendRow(h);
     }
 
-    var d = new Date(data.date + 'T12:00:00');
+    var d  = new Date(data.date + 'T12:00:00');
     var dn = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    var row = [
-      data.date, dn[d.getDay()],
-      data.customers||0, data.totalJobs||0, data.totalSales||0,
-      data.cash||0, data.eftpos||0,
-      data.notes||'', data.submittedAt||''
-    ];
+    var row = [data.date, dn[d.getDay()], data.customers||0, data.totalJobs||0,
+               data.totalSales||0, data.cash||0, data.eftpos||0,
+               data.notes||'', data.submittedAt||''];
     codes.forEach(function(c) {
       var dept = depts[c] || {};
       row.push(dept.jobs||0);
@@ -1361,14 +1324,13 @@ function setScriptCode() {
   }
 }
 
-// Run this ONCE to save your Gemini key securely in Apps Script
+// ── Run this ONCE to save your Gemini key ──
 function setGeminiKey() {
   PropertiesService.getScriptProperties().setProperty('GEMINI_KEY', 'PASTE_YOUR_KEY_HERE');
   Logger.log('Gemini key saved.');
-}`;
+}`
 }
 
-// ── HISTORY SCRIPT ──
 var DEPTS = [
   {code:'D01',name:'Batteries'},{code:'D02',name:'Watch Bands'},{code:'D03',name:'Transponders'},
   {code:'D04',name:'Remotes'},{code:'D05',name:'Glue'},{code:'D06',name:'House Keys'},
@@ -1708,9 +1670,7 @@ function closeDetail(){
   render();
 }
 
-// ── MERGED ONLOAD ──
 window.onload = function() {
-  // Entry init
   var today = new Date().toISOString().split('T')[0];
   var dateEl = document.getElementById('sales-date');
   if (dateEl) dateEl.value = today;
@@ -1721,7 +1681,6 @@ window.onload = function() {
   var urlInp = document.getElementById('url-inp');
   if (urlInp && scriptUrl) urlInp.value = scriptUrl;
   showConnStatus();
-  // History init
   salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
   lookup = buildLookup();
 };

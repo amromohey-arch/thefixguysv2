@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Fix Guys — Sales</title>
 <style>
-/* ══ ENTRY STYLES ══ */
 
 @font-face { font-family:'Glancyr'; font-style:italic; font-weight:400; src:local('Glancyr-LightItalic'); }
 @font-face { font-family:'JustSans'; font-weight:400; src:local('JUST Sans Medium'); }
@@ -378,7 +377,6 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 }
 
 
-/* ══ HISTORY STYLES ══ */
 
 @font-face { font-family:'Glancyr'; font-style:italic; font-weight:400; src:local('Glancyr-LightItalic'); }
 @font-face { font-family:'JustSans'; font-weight:400; src:local('JUST Sans Medium'); }
@@ -521,14 +519,12 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 .range-day-row:hover td { background:var(--red-pl)!important; }
 
 
-/* ══ PAGE SWITCHER ══ */
 #app-entry   { display:block; }
 #app-history { display:none; }
 </style>
 </head>
 <body>
 
-<!-- ══════════ ENTRY APP ══════════ -->
 <div id="app-entry">
 <div class="hdr">
   <div class="hdr-brand">The Fix Guys — Sales</div>
@@ -706,7 +702,6 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 </div>
 </div>
 
-<!-- ══════════ HISTORY APP ══════════ -->
 <div id="app-history" style="display:none">
 <div class="hdr">
   <div class="hdr-brand">The Fix Guys — Sales</div>
@@ -801,14 +796,15 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 </div>
 
 <script>
+// ── APP SWITCHER ──
 function showApp(name) {
   document.getElementById('app-entry').style.display   = name==='entry'   ? 'block' : 'none';
   document.getElementById('app-history').style.display = name==='history' ? 'block' : 'none';
   window.scrollTo(0,0);
-  if (name==='history' && typeof setView === 'function') setView('month');
+  if (name==='history' && typeof setView === 'function') { setView('month'); }
 }
 
-/* ══ ENTRY SCRIPT ══ */
+// ── ENTRY SCRIPT ──
 // ═══════════════════════════════
 //  DEPARTMENTS — exact from till
 // ═══════════════════════════════
@@ -844,16 +840,7 @@ var scannedData = null; // parsed data from AI scan
 // ═══════════════════════════════
 //  INIT
 // ═══════════════════════════════
-window.onload = function() {
-  var today = new Date().toISOString().split('T')[0];
-  document.getElementById('sales-date').value = today;
-  updateDayLabel();
-  buildDeptRows();
-  checkSetupWarn();
-  setScriptCode();
-  if (scriptUrl)  document.getElementById('url-inp').value     = scriptUrl;
-  showConnStatus();
-};
+
 
 function updateDayLabel() {
   var v = document.getElementById('sales-date').value;
@@ -1373,7 +1360,7 @@ function setGeminiKey() {
 }`;
 }
 
-/* ══ HISTORY SCRIPT ══ */
+// ── HISTORY SCRIPT ──
 var DEPTS = [
   {code:'D01',name:'Batteries'},{code:'D02',name:'Watch Bands'},{code:'D03',name:'Transponders'},
   {code:'D04',name:'Remotes'},{code:'D05',name:'Glue'},{code:'D06',name:'House Keys'},
@@ -1433,7 +1420,7 @@ function weekMonday(date) {
 }
 function addDays(date,n) { var d=new Date(date); d.setDate(d.getDate()+n); return d; }
 
-window.onload=function(){ setView('month'); };
+// history onload merged below
 
 function setView(name) {
   curView=name;
@@ -1712,6 +1699,26 @@ function closeDetail(){
   if(rangeMode) document.getElementById('range-hint').style.display='inline';
   render();
 }
+
+// ── MERGED ONLOAD ──
+window.onload = function() {
+  // Entry init
+  var today = new Date().toISOString().split('T')[0];
+  var dateEl = document.getElementById('sales-date');
+  if (dateEl) { dateEl.value = today; }
+  updateDayLabel();
+  buildDeptRows();
+  checkSetupWarn();
+  setScriptCode();
+  var urlInp = document.getElementById('url-inp');
+  if (urlInp && scriptUrl) urlInp.value = scriptUrl;
+  showConnStatus();
+
+  // History init
+  salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
+  lookup = buildLookup();
+  // Don't auto-render history — it renders when tab is opened
+};
 </script>
 </body>
 </html>

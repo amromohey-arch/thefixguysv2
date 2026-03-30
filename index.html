@@ -377,7 +377,6 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 }
 
 
-
 @font-face { font-family:'Glancyr'; font-style:italic; font-weight:400; src:local('Glancyr-LightItalic'); }
 @font-face { font-family:'JustSans'; font-weight:400; src:local('JUST Sans Medium'); }
 *,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
@@ -518,9 +517,8 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 .range-day-row { cursor:pointer; }
 .range-day-row:hover td { background:var(--red-pl)!important; }
 
-
 #app-entry   { display:block; }
-#app-history { display:none; }
+#app-history { display:none;  }
 </style>
 </head>
 <body>
@@ -552,12 +550,20 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
     <h3>📷 Scan Till Receipt</h3>
     <p>Take a photo of your end-of-day till receipt and AI will automatically fill in all the department sales, cash and EFTPOS totals. Then check the numbers and submit.</p>
 
-    <!-- Upload zone -->
-    <div class="upload-zone" id="upload-zone">
-      <input type="file" id="receipt-file" accept="image/*" capture="environment" onchange="handleImage(this)">
-      <div class="upload-icon">📄</div>
-      <div class="upload-main">Tap to take a photo or upload from gallery</div>
-      <div class="upload-sub">Receipt image will be saved to Google Drive</div>
+    <!-- Two upload options -->
+    <div id="upload-zone" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+      <label style="flex:1;min-width:140px;background:var(--dark);border-radius:var(--r);padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='var(--red)'" onmouseout="this.style.background='var(--dark)'">
+        <input type="file" id="receipt-file" accept="image/*" capture="environment" onchange="handleImage(this)" style="display:none">
+        <div style="font-size:28px">📷</div>
+        <div style="font-size:13px;font-weight:700;color:#fff;text-align:center;">Take Photo</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.55);text-align:center;">Opens camera</div>
+      </label>
+      <label style="flex:1;min-width:140px;background:var(--dark);border-radius:var(--r);padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='var(--red)'" onmouseout="this.style.background='var(--dark)'">
+        <input type="file" id="receipt-file-gallery" accept="image/*" onchange="handleImage(this)" style="display:none">
+        <div style="font-size:28px">🖼️</div>
+        <div style="font-size:13px;font-weight:700;color:#fff;text-align:center;">Upload Photo</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.55);text-align:center;">Choose from gallery</div>
+      </label>
     </div>
 
     <!-- Preview -->
@@ -801,7 +807,7 @@ function showApp(name) {
   document.getElementById('app-entry').style.display   = name==='entry'   ? 'block' : 'none';
   document.getElementById('app-history').style.display = name==='history' ? 'block' : 'none';
   window.scrollTo(0,0);
-  if (name==='history' && typeof setView === 'function') { setView('month'); }
+  if (name==='history' && typeof setView === 'function') setView('month');
 }
 
 // ── ENTRY SCRIPT ──
@@ -1171,6 +1177,8 @@ function resetForm() {
   document.getElementById('btn-scan').classList.remove('show');
   document.getElementById('scan-result').classList.remove('show');
   document.getElementById('receipt-file').value = '';
+  var gal = document.getElementById('receipt-file-gallery');
+  if (gal) gal.value = '';
 
   updateTotals(); updateDiff();
 
@@ -1420,7 +1428,7 @@ function weekMonday(date) {
 }
 function addDays(date,n) { var d=new Date(date); d.setDate(d.getDate()+n); return d; }
 
-// history onload merged below
+
 
 function setView(name) {
   curView=name;
@@ -1705,7 +1713,7 @@ window.onload = function() {
   // Entry init
   var today = new Date().toISOString().split('T')[0];
   var dateEl = document.getElementById('sales-date');
-  if (dateEl) { dateEl.value = today; }
+  if (dateEl) dateEl.value = today;
   updateDayLabel();
   buildDeptRows();
   checkSetupWarn();
@@ -1713,11 +1721,9 @@ window.onload = function() {
   var urlInp = document.getElementById('url-inp');
   if (urlInp && scriptUrl) urlInp.value = scriptUrl;
   showConnStatus();
-
   // History init
   salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
   lookup = buildLookup();
-  // Don't auto-render history — it renders when tab is opened
 };
 </script>
 </body>

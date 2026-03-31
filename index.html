@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TFG Sales App v2.5 | gemini-2.5-flash | 2026-03-30 -->
+<!-- TFG Sales App v2.6 | gemini-2.5-flash | cross-device sync | 2026-03-31 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -525,7 +525,7 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 <body>
 <div id="app-entry">
 <div class="hdr">
-  <div class="hdr-brand">The Fix Guys — Sales <span style="font-size:10px;font-style:normal;opacity:0.5;font-family:var(--fb);margin-left:6px">v2.5</span></div>
+  <div class="hdr-brand">The Fix Guys — Sales</div>
   <div class="hdr-nav">
     <span class="nav-btn active" id="nav-entry" onclick="showPage('entry')">Daily Entry</span>
     <a  class="nav-btn"                         href="#" onclick="showApp('history');return false;">Sales History</a>
@@ -743,7 +743,7 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 </div>
 <div id="app-history" style="display:none">
 <div class="hdr">
-  <div class="hdr-brand">The Fix Guys — Sales <span style="font-size:10px;font-style:normal;opacity:0.5;font-family:var(--fb);margin-left:6px">v2.5</span></div>
+  <div class="hdr-brand">The Fix Guys — Sales</div>
   <div class="hdr-nav">
     <a  class="nav-btn"         href="#" onclick="showApp('entry');return false;">Daily Entry</a>
     <a  class="nav-btn active"  href="history.html">Sales History</a>
@@ -834,12 +834,22 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 </div>
 </div>
 <script>
+// ── v2.6 — cross-device sync from Google Sheets ──
+
 function showApp(name) {
   document.getElementById('app-entry').style.display   = name==='entry'   ? 'block' : 'none';
   document.getElementById('app-history').style.display = name==='history' ? 'block' : 'none';
   window.scrollTo(0,0);
-  if (name==='history' && typeof setView === 'function') setView('month');
+  if (name==='history') {
+    // Refresh data from Sheets every time history is opened
+    salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
+    lookup = buildLookup();
+    setView('month');
+    if (scriptUrl) syncFromSheets();
+  }
 }
+
+// ── ENTRY SCRIPT ──
 // ═══════════════════════════════
 //  DEPARTMENTS — exact from till
 // ═══════════════════════════════
@@ -1422,6 +1432,8 @@ function setGeminiKey() {
   Logger.log('Gemini key saved.');
 }`
 }
+
+// ── HISTORY SCRIPT ──
 var DEPTS = [
   {code:'D01',name:'Batteries'},{code:'D02',name:'Watch Bands'},{code:'D03',name:'Transponders'},
   {code:'D04',name:'Remotes'},{code:'D05',name:'Glue'},{code:'D06',name:'House Keys'},
@@ -1437,6 +1449,8 @@ var DAYS_F   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Sat
 
 var salesData  = JSON.parse(localStorage.getItem('tfg_data') || '[]');
 var lookup     = buildLookup();
+var scriptUrl  = localStorage.getItem('tfg_url') || '';
+var syncStatus = 'local'; // 'local' | 'syncing' | 'synced' | 'error' 
 var curView    = 'month';
 var curYear    = new Date().getFullYear();
 var curMonth   = new Date().getMonth();
@@ -1482,6 +1496,46 @@ function weekMonday(date) {
 function addDays(date,n) { var d=new Date(date); d.setDate(d.getDate()+n); return d; }
 
 
+
+function syncFromSheets() {
+  // Show syncing indicator
+  var hdr = document.querySelector('.hdr-brand');
+  if (hdr) hdr.innerHTML = 'The Fix Guys — Sales History <span id="sync-lbl" style="font-size:10px;font-style:normal;font-family:var(--fb);margin-left:8px;opacity:0.7">⏳ Syncing...</span>';
+
+  fetch(scriptUrl + '?type=all_sales', { method: 'GET', redirect: 'follow' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.status === 'ok' && data.rows && data.rows.length > 0) {
+        // Merge Sheets data with any local data, Sheets wins on conflict
+        var sheetsMap = {};
+        data.rows.forEach(function(r) { sheetsMap[r.date] = r; });
+
+        // Also keep any local entries not in Sheets (submitted offline)
+        var localData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
+        localData.forEach(function(r) {
+          if (!sheetsMap[r.date]) sheetsMap[r.date] = r;
+        });
+
+        salesData = Object.values(sheetsMap).sort(function(a,b) {
+          return a.date.localeCompare(b.date);
+        });
+        lookup = buildLookup();
+        localStorage.setItem('tfg_data', JSON.stringify(salesData));
+        render();
+
+        var lbl = document.getElementById('sync-lbl');
+        if (lbl) lbl.innerHTML = '✓ Synced';
+        setTimeout(function() { if (lbl) lbl.innerHTML = ''; }, 3000);
+      } else {
+        var lbl = document.getElementById('sync-lbl');
+        if (lbl) lbl.innerHTML = '(local data)';
+      }
+    })
+    .catch(function() {
+      var lbl = document.getElementById('sync-lbl');
+      if (lbl) lbl.innerHTML = '(offline)';
+    });
+}
 
 function setView(name) {
   curView=name;
@@ -1760,7 +1814,10 @@ function closeDetail(){
   if(rangeMode) document.getElementById('range-hint').style.display='inline';
   render();
 }
+
+// ── MERGED ONLOAD ──
 window.onload = function() {
+  // Entry init
   var today = new Date().toISOString().split('T')[0];
   var dateEl = document.getElementById('sales-date');
   if (dateEl) dateEl.value = today;
@@ -1774,6 +1831,7 @@ window.onload = function() {
   if (gInp && geminiKey) gInp.value = geminiKey;
   showConnStatus();
   showGeminiStatus();
+  // History init
   salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
   lookup = buildLookup();
 };

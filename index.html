@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- TFG Sales App v2.7 | cross-device sync | collapsible setup | sync banner | 2026-03-31 -->
+<!-- TFG Sales App v2.8 | Key fix: date/totalJobs/totalSales | toYMD() | 2026-03-31 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -851,7 +851,7 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 </div>
 </div>
 <script>
-// ── v2.7 ──
+// ── v2.8 — key/date mismatch fix ──
 function showApp(name) {
   document.getElementById('app-entry').style.display   = name==='entry'   ? 'block' : 'none';
   document.getElementById('app-history').style.display = name==='history' ? 'block' : 'none';
@@ -1518,340 +1518,98 @@ function setBanner(type, msg) {
   var text   = document.getElementById('sync-text');
   if (!banner) return;
   if (type === 'syncing') {
-    banner.style.background='var(--gl)'; banner.style.borderColor='var(--gm)'; banner.style.color='var(--gd)';
+    banner.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:var(--r);margin-bottom:14px;font-size:13px;font-weight:600;font-family:var(--fb);background:#f8f7f7;border:1.5px solid #e6e6e6;color:#4d4d4d;transition:all 0.3s';
     icon.textContent='⏳'; text.textContent=msg||'Syncing from Google Sheets...';
   } else if (type === 'synced') {
-    banner.style.background='var(--grn-l)'; banner.style.borderColor='var(--grn-b)'; banner.style.color='var(--grn)';
+    banner.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:var(--r);margin-bottom:14px;font-size:13px;font-weight:600;font-family:var(--fb);background:#dcfce7;border:1.5px solid #86efac;color:#16a34a;transition:all 0.3s';
     icon.textContent='✅'; text.textContent=msg||'Synced with Google Sheets';
   } else if (type === 'local') {
-    banner.style.background='var(--amb-l)'; banner.style.borderColor='#fde047'; banner.style.color='#92400e';
-    icon.textContent='⚠️'; text.textContent=msg||'Showing local data only — Google Sheets not connected';
+    banner.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:var(--r);margin-bottom:14px;font-size:13px;font-weight:600;font-family:var(--fb);background:#fef9c3;border:1.5px solid #fde047;color:#92400e;transition:all 0.3s';
+    icon.textContent='⚠️'; text.textContent=msg||'Showing local data only — connect Google Sheets in Setup to sync across devices';
   } else if (type === 'error') {
-    banner.style.background='#fef2f2'; banner.style.borderColor='#fca5a5'; banner.style.color='var(--red-dk)';
+    banner.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:var(--r);margin-bottom:14px;font-size:13px;font-weight:600;font-family:var(--fb);background:#fef2f2;border:1.5px solid #fca5a5;color:#7d0303;transition:all 0.3s';
     icon.textContent='🔴'; text.textContent=msg||'Could not sync — showing last saved data';
   }
 }
 
 function syncFromSheets() {
-  if (!scriptUrl) {
-    setBanner('local', 'Showing data from this device only — connect Google Sheets in Setup to sync across devices');
+  var url = localStorage.getItem('tfg_url') || '';
+  if (!url) {
+    setBanner('local', 'No Google Sheets connection — go to Daily Entry → Setup to connect');
     return;
   }
 
-  setBanner('syncing', 'Syncing from Google Sheets...');
+  setBanner('syncing', 'Pulling latest data from Google Sheets...');
 
-  fetch(scriptUrl + '?type=all_sales', { method: 'GET', redirect: 'follow' })
+  fetch(url + '?type=all_sales', { method: 'GET', redirect: 'follow' })
     .then(function(r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     })
-    .then(function(data) {
-      if (data.status === 'ok' && data.rows && data.rows.length > 0) {
-        var sheetsMap = {};
-        data.rows.forEach(function(r) { sheetsMap[r.date] = r; });
-        var localData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
-        localData.forEach(function(r) {
-          if (!sheetsMap[r.date]) sheetsMap[r.date] = r;
-        });
-        salesData = Object.values(sheetsMap).sort(function(a,b){
-          return a.date.localeCompare(b.date);
-        });
-        lookup = buildLookup();
-        localStorage.setItem('tfg_data', JSON.stringify(salesData));
-        render();
-        var now = new Date();
-        var time = now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0');
-        setBanner('synced', 'Synced with Google Sheets — ' + data.rows.length + ' days of data — last updated ' + time);
-      } else if (data.status === 'ok' && (!data.rows || data.rows.length === 0)) {
-        setBanner('local', 'No data found in Google Sheets yet — showing local data');
-      } else {
-        setBanner('error', 'Sync error — showing last saved data from this device');
+    .then(function(resp) {
+      // Check for Apps Script error
+      if (resp.error) throw new Error(resp.error);
+      if (resp.status !== 'ok') throw new Error('Unexpected response from server');
+
+      var rows = resp.rows || [];
+      if (rows.length === 0) {
+        setBanner('local', 'Google Sheets is empty — submit your first day to start syncing');
+        return;
       }
+
+      // ── KEY MAPPING — matches Apps Script doGet exactly ──
+      // Apps Script returns: date, totalJobs, totalSales, cash, eftpos,
+      //                      customers, notes, departments{code:{name,jobs,sales}}
+      var sheetsMap = {};
+      rows.forEach(function(r) {
+        // Validate date format YYYY-MM-DD
+        var d = String(r.date || '').trim();
+        if (!d.match(/^\d{4}-\d{2}-\d{2}$/)) return; // skip malformed
+
+        sheetsMap[d] = {
+          date:        d,
+          customers:   parseFloat(r.customers)  || 0,
+          totalJobs:   parseFloat(r.totalJobs)  || 0,
+          totalSales:  parseFloat(r.totalSales) || 0,
+          cash:        parseFloat(r.cash)       || 0,
+          eftpos:      parseFloat(r.eftpos)     || 0,
+          notes:       r.notes || '',
+          departments: r.departments || {}
+        };
+      });
+
+      // Merge with any local-only entries (e.g. submitted offline)
+      var local = JSON.parse(localStorage.getItem('tfg_data') || '[]');
+      local.forEach(function(r) {
+        if (r.date && !sheetsMap[r.date]) sheetsMap[r.date] = r;
+      });
+
+      // Sort by date ascending
+      salesData = Object.values(sheetsMap).sort(function(a,b) {
+        return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+      });
+
+      lookup = buildLookup();
+      localStorage.setItem('tfg_data', JSON.stringify(salesData));
+      render();
+
+      var now  = new Date();
+      var time = now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0');
+      setBanner('synced',
+        '✓ Synced — ' + salesData.length + ' days loaded from Google Sheets — ' + time);
     })
     .catch(function(err) {
-      setBanner('error', 'Could not reach Google Sheets — showing local data. Check your internet connection.');
+      // Still show local data even if sync fails
+      salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
+      lookup = buildLookup();
+      render();
+      setBanner('error',
+        'Could not sync with Google Sheets — showing ' + salesData.length +
+        ' days of local data. Error: ' + err.message);
     });
 }
 
-function setView(name) {
-  curView=name;
-  ['month','week','year'].forEach(function(v){
-    document.getElementById('view-'+v).style.display=v===name?'block':'none';
-    document.getElementById('vt-'+v).classList.toggle('active',v===name);
-  });
-  document.getElementById('range-bar').style.display=name==='week'?'none':'flex';
-  clearRange(); clearDetail(); render();
-}
-
-function render() {
-  if(curView==='month') renderMonth();
-  if(curView==='week')  renderWeek();
-  if(curView==='year')  renderYear();
-}
-
-function goToday() {
-  var n=new Date(); curYear=n.getFullYear(); curMonth=n.getMonth(); curWeekMon=weekMonday(n);
-  clearRange(); clearDetail(); render();
-}
-
-/* ── MONTH ── */
-function changeMonth(dir) {
-  curMonth+=dir;
-  if(curMonth<0){curMonth=11;curYear--;}
-  if(curMonth>11){curMonth=0;curYear++;}
-  clearRange(); clearDetail(); render();
-}
-
-function renderMonth() {
-  document.getElementById('month-title').textContent=MONTHS[curMonth]+' '+curYear;
-  var today=new Date().toISOString().split('T')[0];
-  var firstDow=new Date(curYear,curMonth,1).getDay();
-  var offset=(firstDow+6)%7;
-  var dim=new Date(curYear,curMonth+1,0).getDate();
-  var html='';
-  for(var i=0;i<offset;i++) html+='<div class="m-day m-empty"></div>';
-  for(var day=1;day<=dim;day++) {
-    var ds=isoDate(curYear,curMonth,day);
-    var rec=lookup[ds];
-    var h=rec?heat(ds,rec.totalSales):'';
-    var cls='m-day'+(h?' h-'+h:'')+(ds===today?' today':'');
-    if(rangeMode){
-      if(ds===rStart||ds===rEnd) cls+=' m-rng-se';
-      else if(rStart&&rEnd&&ds>rStart&&ds<rEnd) cls+=' m-in-rng';
-      else if(rStart&&!rEnd&&ds===rStart) cls+=' m-rng-se';
-    } else if(ds===selected) cls+=' m-sel';
-    var slbl=rec?(rec.totalSales>=1000?'$'+(rec.totalSales/1000).toFixed(1)+'k':'$'+rec.totalSales.toFixed(0)):'';
-    html+='<div class="'+cls+'" onclick="dayClick(\''+ds+'\')">' +
-      '<div class="m-num">'+day+'</div>' +
-      (slbl?'<div class="m-sales">'+slbl+'</div>':'') +
-      (rec?'<div class="m-jobs">'+rec.totalJobs+' jobs</div>':'') +
-      '</div>';
-  }
-  document.getElementById('month-days').innerHTML=html;
-}
-
-/* ── WEEK ── */
-function changeWeek(dir) { curWeekMon=addDays(curWeekMon,dir*7); clearDetail(); render(); }
-
-function renderWeek() {
-  var mon=curWeekMon, sun=addDays(mon,6);
-  document.getElementById('week-title').textContent=
-    'Week: '+mon.getDate()+' '+MONTHS_S[mon.getMonth()]+' – '+sun.getDate()+' '+MONTHS_S[sun.getMonth()]+' '+sun.getFullYear();
-  var tS=0,tJ=0,tC=0, rows='';
-  for(var i=0;i<7;i++) {
-    var d=addDays(mon,i), ds=d.toISOString().split('T')[0];
-    var rec=lookup[ds];
-    var h=rec?heat(ds,rec.totalSales):'';
-    var dot='<span class="dot" style="background:'+dotColor(h)+'"></span>';
-    var pc=(rec&&rec.customers>0)?'$'+(rec.totalSales/rec.customers).toFixed(2):'—';
-    if(rec){tS+=rec.totalSales;tJ+=rec.totalJobs;tC+=rec.customers;}
-    rows+='<tr onclick="'+(rec?'dayClick(\''+ds+'\')':'')+'">'+
-      '<td>'+dot+'<strong>'+DAYS_S[d.getDay()]+'</strong> '+d.getDate()+' '+MONTHS_S[d.getMonth()]+'</td>'+
-      '<td>'+(rec?'<span style="background:var(--grn-l);color:var(--grn);padding:2px 7px;border-radius:100px;font-size:10px;font-weight:700">✓</span>':'<span style="color:#aaa;font-size:11px">—</span>')+'</td>'+
-      '<td>'+(rec?rec.customers:'—')+'</td>'+
-      '<td>'+(rec?fmt(rec.totalSales):'—')+'</td>'+
-      '<td>'+pc+'</td>'+
-      '<td>'+(rec?rec.totalJobs:'—')+'</td>'+
-      '</tr>';
-  }
-  var avgC=tC>0?'$'+(tS/tC).toFixed(2):'—';
-  document.getElementById('week-tbl').innerHTML=
-    '<thead><tr><th>Date</th><th>Status</th><th>Customers</th><th>Sales</th><th>$/Cust</th><th>Jobs</th></tr></thead>'+
-    '<tbody>'+rows+'</tbody>'+
-    '<tfoot><tr><td colspan="2">TOTAL</td><td>'+tC+'</td><td>'+fmt(tS)+'</td><td>'+avgC+'</td><td>'+tJ+'</td></tr></tfoot>';
-}
-
-/* ── YEAR ── */
-function changeYear(dir) { curYear+=dir; clearRange(); clearDetail(); render(); }
-
-function renderYear() {
-  document.getElementById('year-title').textContent=curYear;
-  var today=new Date().toISOString().split('T')[0];
-  var html='';
-  for(var m=0;m<12;m++) {
-    var dim=new Date(curYear,m+1,0).getDate();
-    var firstDow=new Date(curYear,m,1).getDay();
-    var offset=(firstDow+6)%7;
-    var monTotal=0;
-    for(var d2=1;d2<=dim;d2++){var r=lookup[isoDate(curYear,m,d2)];if(r)monTotal+=r.totalSales;}
-    var totStr=monTotal>0?'$'+(monTotal/1000).toFixed(1)+'k':'';
-    html+='<div class="y-mon"><div class="y-mon-hd"><span class="y-mon-name">'+MONTHS[m]+'</span><span class="y-mon-total">'+totStr+'</span></div>';
-    html+='<div class="y-dow-row">'+['M','T','W','T','F','S','S'].map(function(l){return '<div class="y-dow">'+l+'</div>';}).join('')+'</div>';
-    html+='<div class="y-days">';
-    for(var i=0;i<offset;i++) html+='<div class="y-day y-empty"></div>';
-    for(var day=1;day<=dim;day++) {
-      var ds=isoDate(curYear,m,day);
-      var rec=lookup[ds];
-      var h=rec?heat(ds,rec.totalSales):'';
-      var cls='y-day'+(h?' yh-'+h:' y-no-data');
-      if(rangeMode){
-        if(ds===rStart||ds===rEnd) cls+=' y-rng-se';
-        else if(rStart&&rEnd&&ds>rStart&&ds<rEnd) cls+=' y-in-rng';
-        else if(rStart&&!rEnd&&ds===rStart) cls+=' y-rng-se';
-      } else if(ds===selected) cls+=' y-sel';
-      var amt=rec?(rec.totalSales>=1000?'$'+(rec.totalSales/1000).toFixed(1)+'k':'$'+rec.totalSales.toFixed(0)):'';
-      html+='<div class="'+cls+'" onclick="dayClick(\''+ds+'\')" title="'+ds+(rec?' — $'+rec.totalSales.toFixed(2):'')+'">' +
-        '<div class="y-num">'+day+'</div>'+(amt?'<div class="y-amt">'+amt+'</div>':'')+'</div>';
-    }
-    html+='</div></div>';
-  }
-  document.getElementById('year-grid').innerHTML=html;
-}
-
-/* ── RANGE ── */
-function toggleRange() {
-  rangeMode=!rangeMode; rStart=null; rEnd=null; selected=null;
-  var btn=document.getElementById('range-btn');
-  btn.classList.toggle('active',rangeMode);
-  btn.innerHTML='<div class="r-dot"></div>'+(rangeMode?'Range mode ON':'Select date range');
-  document.getElementById('range-hint').style.display=rangeMode?'inline':'none';
-  document.getElementById('range-lbl').classList.remove('show');
-  document.getElementById('clear-btn').classList.remove('show');
-  clearDetail(); render();
-}
-
-function clearRange() {
-  rStart=null; rEnd=null;
-  document.getElementById('range-lbl').classList.remove('show');
-  document.getElementById('clear-btn').classList.remove('show');
-  document.getElementById('range-hint').style.display=rangeMode?'inline':'none';
-  clearDetail(); render();
-}
-
-function updateRangeLbl() {
-  var d1=new Date(rStart+'T12:00:00');
-  var lbl=DAYS_S[d1.getDay()]+' '+d1.getDate()+' '+MONTHS_S[d1.getMonth()];
-  if(rEnd){var d2=new Date(rEnd+'T12:00:00');lbl+=' → '+DAYS_S[d2.getDay()]+' '+d2.getDate()+' '+MONTHS_S[d2.getMonth()];}
-  else lbl+=' → click end date';
-  document.getElementById('range-lbl').textContent=lbl;
-  document.getElementById('range-lbl').classList.add('show');
-}
-
-/* ── DAY CLICK ── */
-function dayClick(ds) {
-  if(rangeMode) {
-    if(!rStart||(rStart&&rEnd)){
-      rStart=ds; rEnd=null; clearDetail(); updateRangeLbl();
-    } else {
-      if(ds<rStart){rEnd=rStart;rStart=ds;}else{rEnd=ds;}
-      document.getElementById('range-hint').style.display='none';
-      document.getElementById('clear-btn').classList.add('show');
-      updateRangeLbl(); showRangePanel();
-    }
-    render();
-  } else {
-    if(selected===ds){selected=null;clearDetail();}
-    else{selected=ds;showDayPanel(ds);}
-    render();
-  }
-}
-
-/* ── DAY PANEL ── */
-function showDayPanel(ds) {
-  var rec=lookup[ds];
-  var dt=new Date(ds+'T12:00:00');
-  var title=DAYS_F[dt.getDay()]+' '+dt.getDate()+' '+MONTHS[dt.getMonth()]+' '+dt.getFullYear();
-  var h=rec?heat(ds,rec.totalSales):'';
-
-  if(!rec) {
-    setDetail('<div class="detail-panel"><div class="dp-hd dark"><div><div class="dp-title">'+title+'</div></div><button class="dp-close" onclick="closeDetail()">✕ Close</button></div><div class="dp-body"><div class="no-data-msg">No sales entered for this day.</div></div></div>');
-    return;
-  }
-
-  var perC=rec.customers>0?'$'+(rec.totalSales/rec.customers).toFixed(2):'—';
-  var dot='<span class="dot" style="background:'+dotColor(h)+'"></span>';
-
-  // Department rows
-  var catRows='';
-  var depts=rec.departments||{};
-  DEPTS.forEach(function(dept) {
-    var d=depts[dept.code]||{jobs:0,sales:0};
-    if(d.jobs>0||d.sales>0) {
-      catRows+='<tr><td><strong>'+dept.code+'</strong></td><td>'+dept.name+'</td><td>'+d.jobs+'</td><td>'+fmt(d.sales)+'</td></tr>';
-    }
-  });
-
-  setDetail('<div class="detail-panel">'+
-    '<div class="dp-hd red">'+
-      '<div><div class="dp-title">'+dot+title+'</div>'+
-        '<div class="dp-stats">'+
-          '<div class="dp-stat"><div class="ds-l">Sales</div><div class="ds-v">'+fmt(rec.totalSales)+'</div></div>'+
-          '<div class="dp-stat"><div class="ds-l">Jobs</div><div class="ds-v">'+rec.totalJobs+'</div></div>'+
-          '<div class="dp-stat"><div class="ds-l">Customers</div><div class="ds-v">'+rec.customers+'</div></div>'+
-          '<div class="dp-stat"><div class="ds-l">$/Cust</div><div class="ds-v">'+perC+'</div></div>'+
-        '</div>'+
-      '</div>'+
-      '<button class="dp-close" onclick="closeDetail()">✕ Close</button>'+
-    '</div>'+
-    '<div class="dp-body">'+
-      (catRows?'<table class="dp-tbl"><thead><tr><th>Code</th><th>Department</th><th>Jobs</th><th>Sales</th></tr></thead>'+
-        '<tbody>'+catRows+'</tbody>'+
-        '<tfoot><tr><td colspan="2">Total</td><td>'+rec.totalJobs+'</td><td>'+fmt(rec.totalSales)+'</td></tr></tfoot>'+
-        '</table>':'<p style="font-size:13px;color:var(--gd)">No department breakdown.</p>')+
-      '<div class="cash-row"><span>💵 Cash: <strong>'+fmt(rec.cash||0)+'</strong></span><span>💳 EFTPOS: <strong>'+fmt(rec.eftpos||0)+'</strong></span></div>'+
-      (rec.notes?'<div class="notes-row"><strong>Notes:</strong> '+rec.notes+'</div>':'')+
-    '</div></div>');
-}
-
-/* ── RANGE PANEL ── */
-function showRangePanel() {
-  var filtered=salesData.filter(function(d){return d.date>=rStart&&d.date<=rEnd;})
-                        .sort(function(a,b){return a.date.localeCompare(b.date);});
-  var d1=new Date(rStart+'T12:00:00'), d2=new Date(rEnd+'T12:00:00');
-  var title=DAYS_S[d1.getDay()]+' '+d1.getDate()+' '+MONTHS_S[d1.getMonth()]+
-    ' → '+DAYS_S[d2.getDay()]+' '+d2.getDate()+' '+MONTHS_S[d2.getMonth()]+' '+d2.getFullYear();
-  var tS=0,tJ=0,tC=0;
-  filtered.forEach(function(d){tS+=d.totalSales;tJ+=d.totalJobs;tC+=d.customers;});
-  var avgC=tC>0?'$'+(tS/tC).toFixed(2):'—';
-  if(!filtered.length){
-    setDetail('<div class="detail-panel"><div class="dp-hd dark"><div><div class="dp-title">'+title+'</div></div><button class="dp-close" onclick="closeDetail()">✕ Close</button></div><div class="dp-body"><div class="no-data-msg">No sales in this range.</div></div></div>');
-    return;
-  }
-  var rows=filtered.map(function(d){
-    var dt=new Date(d.date+'T12:00:00');
-    var h=heat(d.date,d.totalSales);
-    var pc=d.customers>0?'$'+(d.totalSales/d.customers).toFixed(2):'—';
-    return '<tr class="range-day-row" onclick="selected=\''+d.date+'\';showDayPanel(\''+d.date+'\')">'+
-      '<td><span class="dot" style="background:'+dotColor(h)+'"></span><strong>'+DAYS_S[dt.getDay()]+'</strong> '+dt.getDate()+' '+MONTHS_S[dt.getMonth()]+'</td>'+
-      '<td>'+fmt(d.totalSales)+'</td><td>'+d.totalJobs+'</td><td>'+d.customers+'</td><td>'+pc+'</td></tr>';
-  }).join('');
-  setDetail('<div class="detail-panel">'+
-    '<div class="dp-hd dark"><div><div class="dp-title">'+title+' <span style="font-size:13px;opacity:0.6">('+filtered.length+' days)</span></div>'+
-      '<div class="dp-stats">'+
-        '<div class="dp-stat"><div class="ds-l">Total Sales</div><div class="ds-v">'+fmt(tS)+'</div></div>'+
-        '<div class="dp-stat"><div class="ds-l">Jobs</div><div class="ds-v">'+tJ+'</div></div>'+
-        '<div class="dp-stat"><div class="ds-l">Customers</div><div class="ds-v">'+tC+'</div></div>'+
-        '<div class="dp-stat"><div class="ds-l">$/Cust</div><div class="ds-v">'+avgC+'</div></div>'+
-      '</div></div>'+
-      '<button class="dp-close" onclick="closeDetail()">✕ Close</button>'+
-    '</div>'+
-    '<div class="dp-body"><table class="dp-tbl"><thead><tr><th>Date</th><th>Sales</th><th>Jobs</th><th>Customers</th><th>$/Cust</th></tr></thead>'+
-    '<tbody>'+rows+'</tbody>'+
-    '<tfoot><tr><td>Total ('+filtered.length+' days)</td><td>'+fmt(tS)+'</td><td>'+tJ+'</td><td>'+tC+'</td><td>'+avgC+'</td></tr></tfoot>'+
-    '</table></div></div>');
-}
-
-function setDetail(html){
-  var el=document.getElementById('detail');
-  el.innerHTML=html;
-  el.scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-
-function clearDetail(){
-  document.getElementById('detail').innerHTML='';
-  selected=null;
-}
-
-function closeDetail(){
-  selected=null; rStart=null; rEnd=null;
-  clearDetail();
-  document.getElementById('range-lbl').classList.remove('show');
-  document.getElementById('clear-btn').classList.remove('show');
-  if(rangeMode) document.getElementById('range-hint').style.display='inline';
-  render();
-}
-
-// ── MERGED ONLOAD ──
+// ── SINGLE MERGED ONLOAD ──
 window.onload = function() {
   var today = new Date().toISOString().split('T')[0];
   var dateEl = document.getElementById('sales-date');

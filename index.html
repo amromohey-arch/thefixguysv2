@@ -1,1874 +1,219 @@
 <!DOCTYPE html>
-<!-- TFG Sales App v2.7 | cross-device sync | collapsible setup | sync banner | 2026-03-31 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Fix Guys — Sales</title>
 <style>
-
-@font-face { font-family:'Glancyr'; font-style:italic; font-weight:400; src:local('Glancyr-LightItalic'); }
-@font-face { font-family:'JustSans'; font-weight:400; src:local('JUST Sans Medium'); }
-
-*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
-html { -webkit-text-size-adjust:100%; }
-
-:root {
-  --bg:      #fffefa;
-  --dark:    #301d1d;
-  --red:     #e31211;
-  --red-dk:  #7d0303;
-  --red-pl:  #f5efef;
-  --blk:     #141414;
-  --gd:      #4d4d4d;
-  --gm:      #e6e6e6;
-  --gl:      #f8f7f7;
-  --wh:      #ffffff;
-  --grn:     #16a34a;
-  --grn-l:   #dcfce7;
-  --grn-b:   #86efac;
-  --amb:     #d97706;
-  --amb-l:   #fef9c3;
-  --blu:     #2563eb;
-  --blu-l:   #eff6ff;
-  --pink:    #fc8282;
-  --fd: 'Glancyr',Georgia,serif;
-  --fb: 'JustSans','Helvetica Neue',helvetica,arial,sans-serif;
-  --r:  10px;
-  --rl: 16px;
-  --sh: 0 2px 12px rgba(0,0,0,0.06);
-}
-
-body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%; }
-
-/* ── HEADER ── */
-.hdr {
-  background:var(--dark);
-  padding:12px 18px;
-  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;
-}
-.hdr-brand { font-family:var(--fd); font-style:italic; font-size:clamp(15px,3vw,19px); color:var(--wh); }
-.hdr-nav   { display:flex; gap:6px; flex-wrap:wrap; }
-.nav-btn {
-  background:rgba(255,255,255,0.1);
-  border:1px solid rgba(255,255,255,0.2);
-  border-radius:var(--r);
-  padding:6px 13px;
-  font-family:var(--fb); font-size:12px; font-weight:600;
-  color:var(--wh); text-decoration:none; cursor:pointer;
-  transition:background 0.15s, border-color 0.15s;
-}
-.nav-btn:hover  { background:var(--red); border-color:var(--red); }
-.nav-btn.active { background:var(--red); border-color:var(--red); }
-
-/* ── PAGE ── */
-.page { padding:clamp(14px,4vw,32px) clamp(12px,4vw,32px) 48px; }
-
-/* ── PAGE TITLE ── */
-.pg-title { font-family:var(--fd); font-style:italic; font-size:clamp(19px,4vw,26px); color:var(--blk); margin-bottom:4px; }
-.pg-sub   { font-size:13px; color:var(--gd); margin-bottom:18px; }
-
-/* ── SECTION HEAD ── */
-.sec-hd {
-  background:var(--dark); color:var(--wh);
-  font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px;
-  padding:9px 14px;
-  border-radius:var(--r) var(--r) 0 0;
-}
-
-/* ── RECEIPT SCANNER CARD ── */
-.scanner-card {
-  background:var(--blu-l);
-  border:1.5px solid #bfdbfe;
-  border-radius:var(--rl);
-  padding:clamp(16px,3vw,24px);
-  margin-bottom:18px;
-  box-shadow:var(--sh);
-}
-.scanner-card h3 {
-  font-family:var(--fd); font-style:italic;
-  font-size:clamp(16px,3vw,20px); color:var(--blu);
-  margin-bottom:6px; display:flex; align-items:center; gap:8px;
-}
-.scanner-card p { font-size:13px; color:var(--gd); margin-bottom:16px; line-height:1.6; }
-
-.upload-zone {
-  border:2.5px dashed #93c5fd;
-  border-radius:var(--r);
-  background:rgba(255,255,255,0.7);
-  padding:clamp(20px,4vw,36px) 16px;
-  text-align:center;
-  cursor:pointer;
-  transition:border-color 0.15s, background 0.15s;
-  margin-bottom:14px;
-  position:relative;
-}
-.upload-zone:hover { border-color:var(--blu); background:rgba(255,255,255,0.9); }
-.upload-zone input[type=file] {
-  position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
-}
-.upload-icon { font-size:36px; margin-bottom:8px; }
-.upload-main { font-size:14px; font-weight:600; color:var(--blu); margin-bottom:4px; }
-.upload-sub  { font-size:12px; color:var(--gd); }
-
-.receipt-preview {
-  display:none;
-  width:100%;
-  border-radius:var(--r);
-  max-height:300px;
-  object-fit:contain;
-  background:#000;
-  margin-bottom:14px;
-}
-.receipt-preview.show { display:block; }
-
-.btn-scan {
-  width:100%;
-  background:var(--blu);
-  border:none; border-radius:var(--r);
-  padding:12px;
-  font-family:var(--fd); font-style:italic; font-size:15px; font-weight:500;
-  color:var(--wh); cursor:pointer;
-  transition:background 0.15s, transform 0.12s;
-  display:none;
-}
-.btn-scan.show { display:block; }
-.btn-scan:hover:not(:disabled) { background:#1d4ed8; transform:translateY(-1px); }
-.btn-scan:disabled { background:var(--gm); color:#aaa; cursor:not-allowed; }
-
-/* scan result */
-.scan-result {
-  display:none;
-  background:var(--wh);
-  border:1.5px solid var(--grn-b);
-  border-radius:var(--r);
-  padding:14px;
-  margin-top:12px;
-}
-.scan-result.show { display:block; }
-.scan-result-head {
-  display:flex; justify-content:space-between; align-items:center;
-  margin-bottom:10px;
-}
-.scan-result-head h4 { font-size:13px; font-weight:700; color:var(--grn); }
-.btn-apply {
-  background:var(--grn); border:none; border-radius:8px;
-  padding:7px 16px; font-family:var(--fb); font-size:13px; font-weight:600;
-  color:var(--wh); cursor:pointer; transition:background 0.15s;
-}
-.btn-apply:hover { background:#15803d; }
-
-.scan-table { width:100%; border-collapse:collapse; font-size:12px; }
-.scan-table th { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--gd); padding:5px 8px; border-bottom:1.5px solid var(--gm); background:var(--gl); text-align:left; }
-.scan-table th:not(:first-child) { text-align:right; }
-.scan-table td { padding:6px 8px; border-bottom:1px solid var(--gm); font-size:12px; }
-.scan-table td:not(:first-child) { text-align:right; }
-.scan-table tr:last-child td { border-bottom:none; }
-
-/* ── DATE ── */
-.date-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
-.date-row label { font-size:13px; font-weight:600; color:var(--gd); }
-.date-inp {
-  border:1.5px solid var(--gm); border-radius:var(--r);
-  padding:8px 12px; font-family:var(--fb); font-size:14px;
-  color:var(--blk); background:var(--wh); outline:none;
-  transition:border-color 0.15s; cursor:pointer;
-}
-.date-inp:focus { border-color:var(--red); }
-
-/* ── DEPARTMENT TABLE ── */
-.dept-wrap {
-  background:var(--wh);
-  border:1.5px solid var(--gm); border-top:none;
-  border-radius:0 0 var(--rl) var(--rl);
-  overflow:hidden;
-  box-shadow:var(--sh);
-  margin-bottom:18px;
-}
-.col-heads {
-  display:grid;
-  grid-template-columns:32px 1fr 110px 120px;
-  background:var(--gl);
-  border-bottom:1.5px solid var(--gm);
-  padding:6px 12px;
-}
-.col-heads span { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--gd); }
-.col-heads span:nth-child(3),
-.col-heads span:nth-child(4) { text-align:right; }
-
-.dept-row {
-  display:grid;
-  grid-template-columns:32px 1fr 110px 120px;
-  align-items:center;
-  padding:0 12px;
-  min-height:44px;
-  border-bottom:1px solid var(--gl);
-  transition:background 0.1s;
-}
-.dept-row:last-child { border-bottom:none; }
-.dept-row:hover { background:var(--gl); }
-
-.dept-code { font-size:10px; font-weight:700; color:var(--gd); letter-spacing:0.5px; }
-.dept-name { font-size:13px; font-weight:500; }
-
-.n-inp, .d-inp {
-  background:var(--gl);
-  border:1.5px solid var(--gm);
-  border-radius:6px;
-  padding:6px 8px;
-  font-family:var(--fb); font-size:13px; color:var(--blk);
-  outline:none;
-  transition:border-color 0.15s, background 0.15s;
-  text-align:right; width:100%;
-}
-.n-inp { max-width:85px; display:block; margin-left:auto; }
-.d-inp { max-width:100px; display:block; margin-left:auto; }
-.n-inp:focus, .d-inp:focus { border-color:var(--red); background:var(--wh); }
-
-/* highlight when filled by scanner */
-.n-inp.scanned, .d-inp.scanned {
-  border-color:var(--grn);
-  background:var(--grn-l);
-  animation:flashIn 0.4s ease;
-}
-@keyframes flashIn { from { background:#bbf7d0; } to { background:var(--grn-l); } }
-
-.totals-row {
-  display:grid;
-  grid-template-columns:32px 1fr 110px 120px;
-  padding:10px 12px;
-  background:var(--red-pl);
-  border-top:2px solid var(--red);
-}
-.totals-row span { font-size:13px; font-weight:700; color:var(--red-dk); }
-.totals-row span:nth-child(3),
-.totals-row span:nth-child(4) { text-align:right; }
-
-/* ── CUSTOMERS ── */
-.cust-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
-.cust-row label { font-size:14px; font-weight:600; }
-.cust-inp {
-  border:1.5px solid var(--gm); border-radius:var(--r);
-  padding:8px 12px; font-family:var(--fb);
-  font-size:16px; font-weight:600; width:100px; text-align:center;
-  outline:none; background:var(--wh);
-  transition:border-color 0.15s;
-}
-.cust-inp:focus { border-color:var(--red); }
-.cust-inp.scanned { border-color:var(--grn); background:var(--grn-l); }
-
-/* ── CASH SUMMARY ── */
-.cash-wrap {
-  background:var(--wh);
-  border:1.5px solid var(--gm); border-top:none;
-  border-radius:0 0 var(--rl) var(--rl);
-  padding:14px;
-  box-shadow:var(--sh);
-  margin-bottom:14px;
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-}
-@media(max-width:380px) { .cash-wrap { grid-template-columns:1fr; } }
-
-.cash-field label {
-  display:block; font-size:11px; font-weight:700; text-transform:uppercase;
-  letter-spacing:0.8px; color:var(--gd); margin-bottom:6px;
-}
-.cash-inp {
-  width:100%;
-  border:1.5px solid var(--gm); border-radius:7px;
-  padding:9px 10px; font-family:var(--fb);
-  font-size:17px; font-weight:600; text-align:right;
-  outline:none; background:var(--gl);
-  transition:border-color 0.15s, background 0.15s;
-}
-.cash-inp:focus { border-color:var(--red); background:var(--wh); }
-.cash-inp.scanned { border-color:var(--grn); background:var(--grn-l); }
-
-/* ── BANKING BAR ── */
-.banking-bar {
-  background:var(--dark);
-  border-radius:var(--r);
-  padding:12px 16px;
-  display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;
-  margin-bottom:10px;
-}
-.banking-bar .bl { font-family:var(--fd); font-style:italic; font-size:14px; color:var(--wh); }
-.banking-bar .bv { font-family:var(--fd); font-style:italic; font-size:22px; color:var(--wh); }
-
-/* ── DIFF BAR ── */
-.diff-bar { border-radius:var(--r); padding:11px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
-.diff-bar.ok    { background:var(--grn-l); border:1.5px solid var(--grn-b); }
-.diff-bar.over  { background:#fef9c3;      border:1.5px solid #fde047; }
-.diff-bar.under { background:#fef2f2;      border:1.5px solid #fca5a5; }
-.diff-bar .dl { font-size:13px; font-weight:600; }
-.diff-bar.ok    .dl { color:var(--grn); }
-.diff-bar.over  .dl { color:#92400e; }
-.diff-bar.under .dl { color:var(--red-dk); }
-.diff-bar .dv { font-size:17px; font-weight:700; }
-.diff-bar.ok    .dv { color:var(--grn); }
-.diff-bar.over  .dv { color:#92400e; }
-.diff-bar.under .dv { color:var(--red); }
-
-/* ── NOTES ── */
-.notes-ta {
-  width:100%;
-  border:1.5px solid var(--gm); border-top:none;
-  border-radius:0 0 var(--r) var(--r);
-  padding:10px 12px; font-family:var(--fb); font-size:13px;
-  resize:vertical; min-height:60px; outline:none;
-  background:var(--wh); box-shadow:var(--sh);
-  margin-bottom:18px;
-  transition:border-color 0.15s;
-}
-.notes-ta:focus { border-color:var(--red); }
-
-/* ── SUBMIT ── */
-.btn-submit {
-  width:100%; background:var(--red); border:none; border-radius:var(--r);
-  padding:14px; font-family:var(--fd); font-style:italic; font-size:16px; font-weight:500;
-  color:var(--wh); cursor:pointer;
-  transition:background 0.15s, transform 0.12s;
-  letter-spacing:0.3px;
-}
-.btn-submit:hover:not(:disabled) { background:var(--red-dk); transform:translateY(-1px); }
-.btn-submit:disabled { background:var(--gm); color:#aaa; cursor:not-allowed; }
-
-/* ── SUCCESS ── */
-.success { display:none; background:var(--grn-l); border:1.5px solid var(--grn-b); border-radius:var(--rl); padding:28px 20px; text-align:center; margin-bottom:18px; }
-.success.show { display:block; }
-.success-icon { font-size:40px; margin-bottom:10px; }
-.success h3 { font-family:var(--fd); font-style:italic; font-size:20px; color:var(--grn); margin-bottom:6px; }
-.success p  { font-size:13px; color:var(--gd); margin-bottom:14px; }
-.btn-new { background:var(--dark); border:none; border-radius:var(--r); padding:10px 22px; font-family:var(--fb); font-size:13px; font-weight:600; color:var(--wh); cursor:pointer; transition:background 0.15s; }
-.btn-new:hover { background:var(--red); }
-
-/* ── SETUP ── */
-.setup-card { background:var(--wh); border:1.5px solid var(--gm); border-radius:var(--rl); padding:clamp(16px,3vw,26px); box-shadow:var(--sh); margin-bottom:16px; }
-.setup-card h3 { font-family:var(--fd); font-style:italic; font-size:18px; margin-bottom:12px; }
-.setup-steps { font-size:13px; color:var(--gd); line-height:1.8; }
-.setup-steps ol { margin:10px 0 0 16px; display:flex; flex-direction:column; gap:5px; }
-.code-block { background:var(--blk); border-radius:var(--r); padding:14px; margin:14px 0; position:relative; }
-.code-block pre { font-family:monospace; font-size:11px; color:#86efac; white-space:pre-wrap; line-height:1.6; }
-.copy-btn { position:absolute; top:8px; right:8px; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2); border-radius:6px; padding:4px 10px; font-size:11px; color:white; cursor:pointer; font-family:var(--fb); }
-.copy-btn:hover { background:var(--red); }
-.url-inp { width:100%; border:1.5px solid var(--gm); border-radius:var(--r); padding:9px 12px; font-family:monospace; font-size:12px; outline:none; transition:border-color 0.15s; margin-top:7px; background:var(--gl); }
-.url-inp:focus { border-color:var(--red); background:var(--wh); }
-.btn-save { margin-top:7px; background:var(--dark); border:none; border-radius:var(--r); padding:8px 18px; font-family:var(--fb); font-size:12px; font-weight:600; color:var(--wh); cursor:pointer; transition:background 0.15s; }
-.btn-save:hover { background:var(--red); }
-.saved-lbl { margin-left:8px; font-size:12px; color:var(--grn); display:none; }
-.conn-ok   { background:var(--grn-l); border:1.5px solid var(--grn-b); border-radius:var(--r); padding:10px 14px; font-size:13px; color:var(--grn); font-weight:600; }
-.conn-warn { background:var(--amb-l); border:1.5px solid #fde047; border-radius:var(--r); padding:10px 14px; font-size:13px; color:#92400e; }
-
-/* banner */
-.warn-banner { background:var(--amb-l); border:1.5px solid #fde047; border-radius:var(--r); padding:10px 14px; font-size:12px; color:#713f12; margin-bottom:14px; }
-.warn-banner strong { display:block; margin-bottom:3px; }
-.warn-banner a { color:#92400e; font-weight:600; cursor:pointer; text-decoration:underline; }
-
-/* spinner */
-.spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.4); border-top-color:white; border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; margin-right:6px; }
-@keyframes spin { to { transform:rotate(360deg); } }
-
-/* mobile */
-@media(max-width:480px) {
-  .col-heads, .dept-row, .totals-row { grid-template-columns:28px 1fr 90px 100px; }
-  .n-inp { max-width:75px; }
-  .d-inp { max-width:90px; }
-}
-
-
 @font-face { font-family:'Glancyr'; font-style:italic; font-weight:400; src:local('Glancyr-LightItalic'); }
 @font-face { font-family:'JustSans'; font-weight:400; src:local('JUST Sans Medium'); }
 *,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
-html { -webkit-text-size-adjust:100%; }
 :root {
   --bg:#fffefa; --dark:#301d1d; --red:#e31211; --red-dk:#7d0303; --red-pl:#f5efef;
   --blk:#141414; --gd:#4d4d4d; --gm:#e6e6e6; --gl:#f8f7f7; --wh:#ffffff;
   --grn:#16a34a; --grn-l:#dcfce7; --grn-b:#86efac;
-  --fd:'Glancyr',Georgia,serif; --fb:'JustSans','Helvetica Neue',helvetica,arial,sans-serif;
+  --fd:'Glancyr', Georgia, serif; --fb:'JustSans', 'Helvetica Neue', helvetica, arial, sans-serif;
   --r:10px; --rl:16px; --sh:0 2px 12px rgba(0,0,0,0.06);
 }
 body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%; }
-
-.hdr { background:var(--dark); padding:12px 18px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
-.hdr-brand { font-family:var(--fd); font-style:italic; font-size:clamp(15px,3vw,19px); color:var(--wh); }
-.hdr-nav { display:flex; gap:6px; flex-wrap:wrap; }
-.nav-btn { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:var(--r); padding:6px 13px; font-family:var(--fb); font-size:12px; font-weight:600; color:var(--wh); text-decoration:none; cursor:pointer; transition:background 0.15s; }
-.nav-btn:hover  { background:var(--red); border-color:var(--red); }
+.hdr { background:var(--dark); padding:12px 18px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+.hdr-brand { font-family:var(--fd); font-style:italic; font-size:18px; color:var(--wh); }
+.hdr-nav { display:flex; gap:6px; }
+.nav-btn { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:var(--r); padding:6px 12px; font-size:12px; font-weight:600; color:var(--wh); cursor:pointer; }
 .nav-btn.active { background:var(--red); border-color:var(--red); }
-
-.page { padding:clamp(14px,4vw,32px) clamp(12px,4vw,32px) 48px; }
-
-/* view toggle */
-.view-toggle { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px; }
-.vt-btn { padding:7px 16px; border:1.5px solid var(--gm); border-radius:var(--r); background:var(--wh); font-family:var(--fb); font-size:13px; font-weight:600; color:var(--gd); cursor:pointer; transition:all 0.15s; }
-.vt-btn:hover  { border-color:var(--red); color:var(--red); }
-.vt-btn.active { background:var(--red); border-color:var(--red); color:var(--wh); }
-
-/* nav */
-.cal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:10px; }
-.cal-title { font-family:var(--fd); font-style:italic; font-size:clamp(19px,4vw,28px); color:var(--blk); }
-.cal-btns { display:flex; gap:7px; flex-wrap:wrap; }
-.cal-btn { background:var(--wh); border:1.5px solid var(--gm); border-radius:var(--r); padding:7px 14px; font-family:var(--fb); font-size:13px; font-weight:600; color:var(--blk); cursor:pointer; transition:all 0.15s; white-space:nowrap; }
-.cal-btn:hover { border-color:var(--red); color:var(--red); }
-
-/* legend */
-.legend { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; padding:9px 12px; background:var(--wh); border:1.5px solid var(--gm); border-radius:var(--r); align-items:center; }
-.leg-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--gd); }
-.leg-dot { width:11px; height:11px; border-radius:2px; flex-shrink:0; }
-
-/* range */
-.range-bar { display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
-.range-btn { display:flex; align-items:center; gap:7px; padding:7px 14px; background:var(--wh); border:1.5px solid var(--gm); border-radius:var(--r); cursor:pointer; font-size:12px; font-weight:600; color:var(--gd); font-family:var(--fb); transition:all 0.15s; }
-.range-btn:hover  { border-color:var(--red); color:var(--red); }
-.range-btn.active { background:var(--red-pl); border-color:var(--red); color:var(--red-dk); }
-.r-dot { width:8px; height:8px; border-radius:50%; background:var(--gm); transition:background 0.15s; flex-shrink:0; }
-.range-btn.active .r-dot { background:var(--red); }
-.range-hint { font-size:11px; color:var(--gd); font-style:italic; display:none; }
-.range-lbl { background:var(--red-pl); border:1.5px solid var(--red); border-radius:var(--r); padding:5px 10px; font-size:11px; font-weight:700; color:var(--red-dk); display:none; }
-.range-lbl.show { display:block; }
-.clear-btn { background:transparent; border:1.5px solid var(--gm); border-radius:var(--r); padding:5px 10px; font-size:11px; color:var(--gd); cursor:pointer; font-family:var(--fb); transition:all 0.15s; display:none; }
-.clear-btn.show { display:block; }
-.clear-btn:hover { border-color:var(--red); color:var(--red); }
-
-/* ── MONTH VIEW ── */
-.month-wrap { background:var(--wh); border:1.5px solid var(--gm); border-radius:var(--rl); overflow:hidden; box-shadow:var(--sh); }
-.month-dow-row { display:grid; grid-template-columns:repeat(7,1fr); background:var(--dark); }
-.month-dow { text-align:center; padding:8px 2px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:rgba(255,255,255,0.6); font-family:var(--fb); }
-.month-days { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; background:var(--gm); }
-.m-day { background:var(--wh); min-height:clamp(56px,9vw,90px); padding:5px 6px; cursor:pointer; display:flex; flex-direction:column; gap:2px; transition:background 0.1s; }
-.m-day:hover:not(.m-empty) { background:var(--red-pl); }
-.m-empty { background:var(--gl); cursor:default; }
-.m-num { font-size:clamp(11px,2vw,13px); font-weight:700; line-height:1; }
-.m-day.today .m-num { background:var(--red); color:var(--wh); width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; }
-.m-sales { font-size:clamp(8px,1.4vw,11px); font-weight:700; border-radius:3px; padding:1px 4px; display:inline-block; }
-.m-jobs  { font-size:clamp(7px,1.1vw,9px); color:var(--gd); }
-/* heat on month */
-.m-day.h-slow  { background:#fee2e2; } .m-day.h-slow  .m-sales { background:#fca5a5; color:#7f1d1d; }
-.m-day.h-mid   { background:#fefce8; } .m-day.h-mid   .m-sales { background:#fde047; color:#713f12; }
-.m-day.h-good  { background:#f0fdf4; } .m-day.h-good  .m-sales { background:#86efac; color:#14532d; }
-.m-day.h-busy  { background:#dcfce7; } .m-day.h-busy  .m-sales { background:#16a34a; color:#fff; }
-/* selected */
-.m-day.m-sel    { outline:2.5px solid var(--red); outline-offset:-2px; }
-.m-day.m-rng-se { outline:2.5px solid var(--red-dk); outline-offset:-2px; background:var(--red-pl)!important; }
-.m-day.m-in-rng { background:rgba(227,18,17,0.07)!important; }
-
-/* ── YEAR VIEW ── */
-.year-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:clamp(8px,2vw,16px); }
-@media(max-width:860px) { .year-grid { grid-template-columns:repeat(3,1fr); } }
-@media(max-width:580px) { .year-grid { grid-template-columns:repeat(2,1fr); } }
-.y-mon { background:var(--wh); border:1.5px solid var(--gm); border-radius:var(--rl); overflow:hidden; box-shadow:var(--sh); }
-.y-mon-hd { background:var(--dark); padding:6px 9px; display:flex; justify-content:space-between; align-items:center; }
-.y-mon-name  { font-family:var(--fd); font-style:italic; font-size:clamp(10px,1.4vw,13px); color:var(--wh); }
-.y-mon-total { font-size:clamp(8px,1vw,10px); color:rgba(255,255,255,0.55); font-family:var(--fb); }
-.y-dow-row { display:grid; grid-template-columns:repeat(7,1fr); background:var(--gl); }
-.y-dow { text-align:center; font-size:clamp(6px,0.9vw,8px); font-weight:700; color:var(--gd); padding:2px 1px; text-transform:uppercase; }
-.y-days { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; padding:2px; }
-.y-day { aspect-ratio:1; border-radius:2px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; transition:transform 0.1s; }
-.y-day:hover:not(.y-empty) { transform:scale(1.15); z-index:2; box-shadow:0 2px 6px rgba(0,0,0,0.2); }
-.y-empty { cursor:default; background:transparent; }
-.y-no-data { background:var(--gl); }
-.y-day.yh-slow { background:#fca5a5; } .y-day.yh-mid { background:#fde047; } .y-day.yh-good { background:#86efac; } .y-day.yh-busy { background:#16a34a; }
-.y-num { font-size:clamp(5px,0.8vw,8px); font-weight:700; font-family:var(--fb); color:var(--blk); line-height:1; }
-.y-amt { font-size:clamp(4px,0.65vw,6px); font-family:var(--fb); font-weight:600; color:var(--blk); line-height:1; }
-.y-day.yh-busy .y-num, .y-day.yh-busy .y-amt { color:var(--wh); }
-.y-day.y-sel    { outline:2px solid var(--red-dk); outline-offset:-1px; }
-.y-day.y-rng-se { outline:2px solid var(--red-dk); outline-offset:-1px; }
-.y-day.y-in-rng { outline:1.5px solid rgba(227,18,17,0.5); outline-offset:-1px; }
-
-/* ── WEEK VIEW ── */
-.week-nav { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
-.week-title { font-family:var(--fd); font-style:italic; font-size:clamp(16px,3vw,22px); }
-.week-tbl-wrap { background:var(--wh); border:1.5px solid var(--gm); border-radius:var(--rl); overflow:hidden; box-shadow:var(--sh); overflow-x:auto; }
-.week-tbl { width:100%; border-collapse:collapse; font-family:var(--fb); }
-.week-tbl th { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--gd); padding:9px 12px; border-bottom:2px solid var(--gm); background:var(--gl); text-align:left; }
-.week-tbl th:not(:first-child) { text-align:right; }
-.week-tbl td { padding:10px 12px; font-size:clamp(12px,1.5vw,13px); border-bottom:1px solid var(--gl); cursor:pointer; }
-.week-tbl td:not(:first-child) { text-align:right; }
-.week-tbl tr:hover td { background:var(--red-pl); }
-.week-tbl tr:last-child td { border-bottom:none; }
-.week-tbl tfoot td { font-weight:700; color:var(--red-dk); background:var(--red-pl); border-top:2px solid var(--red); border-bottom:none; cursor:default; }
-
-/* ── DETAIL PANEL ── */
-.detail-panel { background:var(--wh); border:1.5px solid var(--gm); border-radius:var(--rl); overflow:hidden; box-shadow:var(--sh); margin-bottom:18px; animation:slideIn 0.24s ease both; }
-@keyframes slideIn { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:translateY(0)} }
-.dp-hd { padding:clamp(12px,2.5vw,18px) clamp(14px,3vw,22px); display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; }
-.dp-hd.red  { background:var(--red); }
-.dp-hd.dark { background:var(--dark); }
-.dp-title { font-family:var(--fd); font-style:italic; font-size:clamp(15px,2.5vw,20px); color:var(--wh); margin-bottom:8px; }
-.dp-stats { display:flex; gap:clamp(10px,2.5vw,22px); flex-wrap:wrap; }
-.dp-stat .ds-l { font-size:9px; color:rgba(255,255,255,0.6); text-transform:uppercase; letter-spacing:0.8px; font-family:var(--fb); }
-.dp-stat .ds-v { font-family:var(--fd); font-style:italic; font-size:clamp(14px,2.2vw,19px); color:var(--wh); line-height:1.1; }
-.dp-close { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); border-radius:6px; padding:5px 11px; font-size:11px; color:var(--wh); cursor:pointer; font-family:var(--fb); font-weight:600; flex-shrink:0; transition:background 0.15s; }
-.dp-close:hover { background:rgba(255,255,255,0.28); }
-.dp-body { padding:clamp(12px,2.5vw,20px) clamp(14px,3vw,22px); overflow-x:auto; }
-.dp-tbl { width:100%; border-collapse:collapse; font-family:var(--fb); }
-.dp-tbl th { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--gd); padding:6px 9px; border-bottom:2px solid var(--gm); background:var(--gl); }
-.dp-tbl th:not(:first-child) { text-align:right; }
-.dp-tbl td { font-size:clamp(11px,1.5vw,13px); padding:8px 9px; border-bottom:1px solid var(--gl); }
-.dp-tbl td:not(:first-child) { text-align:right; }
-.dp-tbl tr:last-child td { border-bottom:none; }
-.dp-tbl tr:hover td { background:var(--gl); }
-.dp-tbl tfoot td { font-weight:700; color:var(--red-dk); background:var(--red-pl); border-top:2px solid var(--red); border-bottom:none; }
-.cash-row { display:flex; gap:16px; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px solid var(--gm); font-size:12px; color:var(--gd); }
-.notes-row { margin-top:10px; padding-top:10px; border-top:1px solid var(--gm); font-size:12px; color:var(--gd); }
-.dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; vertical-align:middle; }
-.no-data-msg { text-align:center; padding:28px 16px; color:var(--gd); font-size:13px; }
-.range-day-row { cursor:pointer; }
-.range-day-row:hover td { background:var(--red-pl)!important; }
-
-#app-entry   { display:block; }
-#app-history { display:none;  }
+.page { padding:20px; display:none; max-width:800px; margin:0 auto; }
+.page.active { display:block; }
+.pg-title { font-family:var(--fd); font-style:italic; font-size:24px; margin-bottom:4px; }
+.pg-sub { font-size:13px; color:var(--gd); margin-bottom:18px; }
+.sec-hd { background:var(--dark); color:var(--wh); font-size:10px; font-weight:700; text-transform:uppercase; padding:8px 12px; border-radius:var(--r) var(--r) 0 0; }
+.scanner-card { background:var(--blu-l); border:1.5px solid #bfdbfe; border-radius:var(--rl); padding:20px; margin-bottom:18px; }
+.upload-btn { background:var(--dark); border-radius:var(--r); padding:12px; display:flex; flex-direction:column; align-items:center; cursor:pointer; color:#fff; font-size:12px; flex:1; }
+.date-row { display:flex; align-items:center; gap:10px; margin-bottom:15px; flex-wrap:wrap; }
+.date-inp, .cust-inp { border:1.5px solid var(--gm); border-radius:var(--r); padding:8px; font-family:var(--fb); outline:none; }
+.dept-wrap { background:var(--wh); border:1.5px solid var(--gm); border-top:none; border-radius:0 0 var(--rl) var(--rl); overflow:hidden; margin-bottom:18px; box-shadow:var(--sh); }
+.col-heads, .dept-row, .totals-row { display:grid; grid-template-columns:30px 1fr 80px 100px; padding:8px 12px; gap:8px; align-items:center; }
+.col-heads { background:var(--gl); font-size:10px; font-weight:700; color:var(--gd); text-transform:uppercase; }
+.n-inp, .d-inp { background:var(--gl); border:1.5px solid var(--gm); border-radius:6px; padding:6px; text-align:right; width:100%; outline:none; }
+.totals-row { background:var(--red-pl); border-top:2px solid var(--red); font-weight:700; color:var(--red-dk); }
+.cash-wrap { background:var(--wh); border:1.5px solid var(--gm); border-top:none; border-radius:0 0 var(--rl) var(--rl); padding:15px; display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:15px; }
+.cash-inp { width:100%; border:1.5px solid var(--gm); border-radius:8px; padding:10px; font-size:18px; font-weight:700; text-align:right; background:var(--gl); outline:none; }
+.banking-bar { background:var(--dark); border-radius:var(--r); padding:15px; display:flex; justify-content:space-between; color:#fff; margin-bottom:10px; }
+.diff-bar { border-radius:var(--r); padding:12px; display:flex; justify-content:space-between; margin-bottom:20px; font-weight:600; }
+.diff-bar.ok { background:var(--grn-l); color:var(--grn); border:1.5px solid var(--grn-b); }
+.diff-bar.under { background:#fef2f2; color:var(--red); border:1.5px solid #fca5a5; }
+.notes-ta { width:100%; border:1.5px solid var(--gm); border-top:none; border-radius:0 0 var(--r) var(--r); padding:10px; min-height:80px; margin-bottom:20px; outline:none; }
+.btn-submit { width:100%; background:var(--red); border:none; border-radius:var(--r); padding:18px; font-family:var(--fd); font-style:italic; font-size:18px; color:white; cursor:pointer; }
+.btn-submit:disabled { background:var(--gm); color:#999; }
 </style>
 </head>
 <body>
-<div id="app-entry">
+
 <div class="hdr">
-  <div class="hdr-brand">The Fix Guys — Sales</div>
+  <div class="hdr-brand">TFG — Sales Sync</div>
   <div class="hdr-nav">
-    <span class="nav-btn active" id="nav-entry" onclick="showPage('entry')">Daily Entry</span>
-    <a  class="nav-btn"                         href="#" onclick="showApp('history');return false;">Sales History</a>
-    <span class="nav-btn"  id="nav-setup" onclick="showPage('setup')">Setup</span>
+    <button class="nav-btn active" onclick="showTab('entry', this)">Entry</button>
+    <button class="nav-btn" onclick="showTab('history', this)">History</button>
+    <button class="nav-btn" onclick="showTab('setup', this)">Setup</button>
   </div>
 </div>
 
-<!-- ═══════════ ENTRY PAGE ═══════════ -->
-<div id="pg-entry" class="page">
-
+<div id="pg-entry" class="page active">
   <div class="pg-title">Daily Sales Entry</div>
-  <div class="pg-sub" id="day-label">Loading...</div>
+  <div id="day-label" class="pg-sub">...</div>
 
-  <!-- Setup warning -->
-  <div class="warn-banner" id="setup-warn" style="display:none">
-    <strong>⚠️ Google Sheets not connected</strong>
-    Go to <a onclick="showPage('setup')">Setup</a> and save your Apps Script URL to enable syncing.
-  </div>
-
-  <!-- ── RECEIPT SCANNER ── -->
-  <div class="scanner-card">
-    <h3>📷 Scan Till Receipt</h3>
-    <p>Take a photo of your end-of-day till receipt and AI will automatically fill in all the department sales, cash and EFTPOS totals. Then check the numbers and submit.</p>
-
-    <!-- Two upload options -->
-    <div id="upload-zone" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
-      <label style="flex:1;min-width:140px;background:var(--dark);border-radius:var(--r);padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='var(--red)'" onmouseout="this.style.background='var(--dark)'">
-        <input type="file" id="receipt-file" accept="image/*" capture="environment" onchange="handleImage(this)" style="display:none">
-        <div style="font-size:28px">📷</div>
-        <div style="font-size:13px;font-weight:700;color:#fff;text-align:center;">Take Photo</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.55);text-align:center;">Opens camera</div>
-      </label>
-      <label style="flex:1;min-width:140px;background:var(--dark);border-radius:var(--r);padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='var(--red)'" onmouseout="this.style.background='var(--dark)'">
-        <input type="file" id="receipt-file-gallery" accept="image/*" onchange="handleImage(this)" style="display:none">
-        <div style="font-size:28px">🖼️</div>
-        <div style="font-size:13px;font-weight:700;color:#fff;text-align:center;">Upload Photo</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.55);text-align:center;">Choose from gallery</div>
-      </label>
-    </div>
-
-    <!-- Preview -->
-    <img class="receipt-preview" id="receipt-preview" alt="Receipt preview">
-
-    <!-- Scan button -->
-    <button class="btn-scan" id="btn-scan" onclick="scanReceipt()">
-      Scan Receipt with AI →
-    </button>
-
-    <!-- Scan result -->
-    <div class="scan-result" id="scan-result">
-      <div class="scan-result-head">
-        <h4>✓ Receipt scanned — review and apply</h4>
-        <button class="btn-apply" onclick="applyScannedData()">Apply to Form ↓</button>
-      </div>
-      <div style="overflow-x:auto">
-        <table class="scan-table" id="scan-table"></table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── DATE ── -->
   <div class="date-row">
-    <label>Sales Date:</label>
-    <input type="date" class="date-inp" id="sales-date" onchange="updateDayLabel()">
+    <label style="font-size:12px; font-weight:700;">DATE</label>
+    <input type="date" id="sales-date" class="date-inp" onchange="updateDayLabel()">
+    <label style="font-size:12px; font-weight:700; margin-left:auto;">CUSTOMERS</label>
+    <input type="number" id="customers" class="cust-inp" style="width:70px" placeholder="0">
   </div>
 
-  <!-- ── DEPARTMENTS ── -->
-  <div class="sec-hd">Sales by Department</div>
+  <div class="sec-hd">Department Totals</div>
   <div class="dept-wrap">
-    <div class="col-heads">
-      <span>Dept</span>
-      <span>Name</span>
-      <span style="text-align:right">No. Jobs</span>
-      <span style="text-align:right">Total ($)</span>
-    </div>
-    <div id="dept-rows"></div>
-    <div class="totals-row">
-      <span></span>
-      <span>TOTAL</span>
-      <span id="t-jobs">0</span>
-      <span id="t-sales">$0.00</span>
-    </div>
+    <div class="col-heads"><span>#</span><span>Dept</span><span>Jobs</span><span>Total ($)</span></div>
+    <div id="dept-container"></div>
+    <div class="totals-row"><span></span><span>TOTAL</span><span id="t-jobs">0</span><span id="t-sales">$0.00</span></div>
   </div>
 
-  <!-- ── CUSTOMERS ── -->
-  <div class="cust-row">
-    <label>Total Customers:</label>
-    <input type="number" class="cust-inp" id="customers" placeholder="0" min="0">
-  </div>
-
-  <!-- ── CASH SUMMARY ── -->
-  <div class="sec-hd">Cash Summary</div>
+  <div class="sec-hd">Payment Summary</div>
   <div class="cash-wrap">
-    <div class="cash-field">
-      <label>Cash ($)</label>
-      <input type="number" class="cash-inp" id="cash" placeholder="0.00" min="0" step="0.01" oninput="updateDiff()">
-    </div>
-    <div class="cash-field">
-      <label>EFTPOS / Card ($)</label>
-      <input type="number" class="cash-inp" id="eftpos" placeholder="0.00" min="0" step="0.01" oninput="updateDiff()">
-    </div>
+    <div><label style="font-size:10px; font-weight:700; color:var(--gd);">CASH</label><input type="number" id="cash" class="cash-inp calc" step="0.01"></div>
+    <div><label style="font-size:10px; font-weight:700; color:var(--gd);">EFTPOS</label><input type="number" id="eftpos" class="cash-inp calc" step="0.01"></div>
   </div>
 
-  <div class="banking-bar">
-    <span class="bl">Total Banking</span>
-    <span class="bv" id="banking">$0.00</span>
-  </div>
+  <div class="banking-bar"><span>Total Banking</span><span id="banking" style="font-weight:700; font-size:20px;">$0.00</span></div>
+  <div id="diff-bar" class="diff-bar ok"><span>Status</span><span id="diff-val">$0.00</span></div>
 
-  <div class="diff-bar ok" id="diff-bar">
-    <span class="dl" id="diff-lbl">Balanced ✓</span>
-    <span class="dv" id="diff-val">$0.00</span>
-  </div>
+  <div class="sec-hd">Notes</div>
+  <textarea id="notes" class="notes-ta" placeholder="Discrepancies, weather, etc..."></textarea>
 
-  <!-- ── NOTES ── -->
-  <div class="sec-hd">Notes (optional)</div>
-  <textarea class="notes-ta" id="notes" placeholder="Anything worth noting about today..."></textarea>
-
-  <!-- ── SUBMIT ── -->
-  <button class="btn-submit" id="btn-submit" onclick="submitSales()">Submit Sales Data</button>
-
-  <!-- ── SUCCESS ── -->
-  <div class="success" id="success">
-    <div class="success-icon">✅</div>
-    <h3>Sales Submitted!</h3>
-    <p id="success-msg">Saved and synced successfully.</p>
-    <button class="btn-new" onclick="resetForm()">Enter Next Day</button>
-  </div>
-
+  <button class="btn-submit" id="btn-submit" onclick="submitData()">Submit to Cloud Sync</button>
 </div>
 
-<!-- ═══════════ SETUP PAGE ═══════════ -->
-<div id="pg-setup" class="page" style="display:none">
+<div id="pg-history" class="page">
+  <div class="pg-title">Recent History</div>
+  <div id="history-list" style="background:#fff; border:1.5px solid var(--gm); border-radius:var(--r); min-height:200px;"></div>
+</div>
 
+<div id="pg-setup" class="page">
   <div class="pg-title">Setup</div>
-  <div class="pg-sub">Connect Google AI and Google Sheets — one time only.</div>
-
-  <!-- Gemini Key -->
-  <div class="setup-card">
-    <h3>Google AI — Receipt Scanner Key</h3>
-    <div class="setup-steps">
-      Get a free key from Google to power the receipt scanner:
-      <ol>
-        <li>Go to <strong>aistudio.google.com/apikey</strong></li>
-        <li>Sign in with your Fix Guys Gmail</li>
-        <li>Click <strong>Create API Key → Create API key in new project</strong></li>
-        <li>Copy the key and paste it below</li>
-      </ol>
-      <div style="margin-top:10px;padding:10px 12px;background:var(--grn-l);border-radius:var(--r);border:1px solid var(--grn-b);font-size:12px;color:#14532d">
-        ✓ Completely free — no credit card needed. More than enough for daily use.
-      </div>
-    </div>
-    <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gd);margin-top:14px;margin-bottom:5px">Gemini API Key</label>
-    <input type="password" class="url-inp" id="gemini-inp" placeholder="AIzaSy...">
-    <br>
-    <button class="btn-save" onclick="saveGeminiKey()">Save Key</button>
-    <span class="saved-lbl" id="gemini-saved-lbl">✓ Saved</span>
-    <div id="gemini-status" style="margin-top:10px"></div>
-  </div>
-
-  <div class="setup-card">
-    <h3>Receipt Scanner — Google AI Key</h3>
-    <div class="setup-steps">
-      The receipt scanner uses Google's free Gemini AI to read your till receipt.
-      <ol>
-        <li>Go to <strong>aistudio.google.com/apikey</strong></li>
-        <li>Sign in with your Google account</li>
-        <li>Click <strong>Create API key → Create API key in new project</strong></li>
-        <li>Copy the key and paste it below</li>
-      </ol>
-      <div style="margin-top:10px;padding:10px 12px;background:var(--grn-l);border-radius:var(--r);border:1px solid var(--grn-b);font-size:12px;color:#14532d">
-        ✓ Free — no credit card needed. Key is saved only on this device.
-      </div>
-    </div>
-    <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gd);margin-top:14px;margin-bottom:5px">Gemini API Key</label>
-    <input type="password" class="url-inp" id="gemini-inp" placeholder="AIza...">
-    <br>
-    <button class="btn-save" onclick="saveGeminiKey()">Save Key</button>
-    <span class="saved-lbl" id="gemini-saved-lbl">✓ Saved</span>
-    <div id="gemini-status" style="margin-top:10px"></div>
-  </div>
-
-  <div class="setup-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;margin-bottom:0" onclick="var b=document.getElementById('sheets-body');var a=document.getElementById('sheets-arrow');b.style.display=b.style.display==='none'?'block':'none';a.textContent=b.style.display==='none'?'▶':'▼'">
-      <h3 style="margin-bottom:0">Google Sheets + Drive Connection</h3>
-      <span id="sheets-arrow" style="font-size:13px;color:var(--gd)">▶</span>
-    </div>
-    <div id="sheets-body" style="display:none">
-    <div class="setup-steps">
-      This script saves your daily sales to Google Sheets AND saves receipt images to Google Drive.
-      <ol>
-        <li>Open <strong>sheets.google.com</strong> in your Fix Guys Gmail → create a new sheet</li>
-        <li>Click <strong>Extensions → Apps Script</strong></li>
-        <li>Select all → delete → paste the script below</li>
-        <li>Save (Ctrl+S) → name it anything</li>
-        <li>Click <strong>Deploy → New Deployment</strong></li>
-        <li>Click ⚙️ → select <strong>Web App</strong></li>
-        <li>Execute as: <strong>Me</strong> · Access: <strong>Anyone</strong></li>
-        <li>Click Deploy → authorise → copy the Web App URL</li>
-        <li>Paste URL below and click Save</li>
-      </ol>
-    </div>
-
-    <div class="code-block">
-      <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Copy into Apps Script</div>
-      <pre id="script-code"></pre>
-      <button class="copy-btn" onclick="copyScript()">Copy</button>
-    </div>
-
-    <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gd);margin-bottom:5px">Your Web App URL</label>
-    <input type="url" class="url-inp" id="url-inp" placeholder="https://script.google.com/macros/s/.../exec">
-    <br>
-    <button class="btn-save" onclick="saveUrl()">Save URL</button>
-    <span class="saved-lbl" id="saved-lbl">✓ Saved</span>
-    </div><!-- end sheets-body -->
-  </div>
-
-  <div id="conn-status"></div>
-
-</div>
-</div>
-<div id="app-history" style="display:none">
-<div class="hdr">
-  <div class="hdr-brand">The Fix Guys — Sales</div>
-  <div class="hdr-nav">
-    <a  class="nav-btn"         href="#" onclick="showApp('entry');return false;">Daily Entry</a>
-    <a  class="nav-btn active"  href="history.html">Sales History</a>
+  <div class="dept-wrap" style="padding:20px; border-top:none; border-radius:var(--r);">
+    <label style="font-size:11px; font-weight:700;">GOOGLE SCRIPT URL</label>
+    <input type="text" id="script-url" class="n-inp" style="text-align:left; margin-top:5px;" placeholder="https://script.google.com/...">
+    <button class="btn-submit" style="margin-top:15px; padding:10px; font-size:14px;" onclick="saveSetup()">Save & Connect</button>
   </div>
 </div>
 
-<div class="page">
-  <!-- View toggle -->
-  <div class="view-toggle">
-    <button class="vt-btn active" id="vt-month" onclick="setView('month')">Month</button>
-    <button class="vt-btn"        id="vt-week"  onclick="setView('week')">Week</button>
-    <button class="vt-btn"        id="vt-year"  onclick="setView('year')">Year</button>
-  </div>
-
-  <!-- Sync status banner -->
-  <div id="sync-banner" style="
-    display:flex; align-items:center; gap:10px;
-    padding:11px 16px; border-radius:var(--r);
-    margin-bottom:14px; font-size:13px; font-weight:600;
-    font-family:var(--fb); border:1.5px solid var(--gm);
-    background:var(--gl); color:var(--gd);
-    transition:all 0.3s ease;">
-    <span id="sync-icon" style="font-size:16px">⏳</span>
-    <span id="sync-text">Checking for latest data...</span>
-  </div>
-
-  <!-- Range bar -->
-  <div class="range-bar" id="range-bar">
-    <button class="range-btn" id="range-btn" onclick="toggleRange()">
-      <div class="r-dot"></div>Select date range
-    </button>
-    <span class="range-hint" id="range-hint">Click start, then end date</span>
-    <div class="range-lbl" id="range-lbl"></div>
-    <button class="clear-btn" id="clear-btn" onclick="clearRange()">✕ Clear</button>
-  </div>
-
-  <!-- Detail panel -->
-  <div id="detail"></div>
-
-  <!-- Month -->
-  <div id="view-month">
-    <div class="cal-nav">
-      <div class="cal-title" id="month-title"></div>
-      <div class="cal-btns">
-        <button class="cal-btn" onclick="changeMonth(-1)">← Prev</button>
-        <button class="cal-btn" onclick="goToday()">Today</button>
-        <button class="cal-btn" onclick="changeMonth(1)">Next →</button>
-      </div>
-    </div>
-    <div class="legend">
-      <div class="leg-item"><div class="leg-dot" style="background:#f8f7f7;border:1px solid #e6e6e6"></div>No data</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#fca5a5"></div>Slow &lt;$1k</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#fde047"></div>Mid $1k–$1.9k</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#86efac"></div>Good</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#16a34a"></div>Busy</div>
-      <div class="leg-item" style="font-size:10px;color:var(--gd);font-style:italic">Thu & Sat busy = $2,300+</div>
-    </div>
-    <div class="month-wrap">
-      <div class="month-dow-row">
-        <div class="month-dow">Mon</div><div class="month-dow">Tue</div><div class="month-dow">Wed</div>
-        <div class="month-dow">Thu</div><div class="month-dow">Fri</div><div class="month-dow">Sat</div>
-        <div class="month-dow">Sun</div>
-      </div>
-      <div class="month-days" id="month-days"></div>
-    </div>
-  </div>
-
-  <!-- Week -->
-  <div id="view-week" style="display:none">
-    <div class="week-nav">
-      <div class="week-title" id="week-title"></div>
-      <div class="cal-btns">
-        <button class="cal-btn" onclick="changeWeek(-1)">← Prev</button>
-        <button class="cal-btn" onclick="goToday()">Today</button>
-        <button class="cal-btn" onclick="changeWeek(1)">Next →</button>
-      </div>
-    </div>
-    <div class="week-tbl-wrap"><table class="week-tbl" id="week-tbl"></table></div>
-  </div>
-
-  <!-- Year -->
-  <div id="view-year" style="display:none">
-    <div class="cal-nav">
-      <div class="cal-title" id="year-title"></div>
-      <div class="cal-btns">
-        <button class="cal-btn" onclick="changeYear(-1)">← Prev</button>
-        <button class="cal-btn" onclick="goToday()">Today</button>
-        <button class="cal-btn" onclick="changeYear(1)">Next →</button>
-      </div>
-    </div>
-    <div class="legend">
-      <div class="leg-item"><div class="leg-dot" style="background:#f8f7f7;border:1px solid #e6e6e6"></div>No data</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#fca5a5"></div>Slow</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#fde047"></div>Mid</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#86efac"></div>Good</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#16a34a"></div>Busy</div>
-    </div>
-    <div class="year-grid" id="year-grid"></div>
-  </div>
-</div>
-</div>
 <script>
-// ── v2.7 ──
-function showApp(name) {
-  document.getElementById('app-entry').style.display   = name==='entry'   ? 'block' : 'none';
-  document.getElementById('app-history').style.display = name==='history' ? 'block' : 'none';
-  window.scrollTo(0,0);
-  if (name==='history') {
-    salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
-    lookup = buildLookup();
-    setView('month');
-    syncFromSheets();
-  }
-}
-
-// ── ENTRY SCRIPT ──
-// ═══════════════════════════════
-//  DEPARTMENTS — exact from till
-// ═══════════════════════════════
-var DEPTS = [
-  { code:'D01', name:'Batteries' },
-  { code:'D02', name:'Watch Bands' },
-  { code:'D03', name:'Transponders' },
-  { code:'D04', name:'Remotes' },
-  { code:'D05', name:'Glue' },
-  { code:'D06', name:'House Keys' },
-  { code:'D07', name:'Heels & Soles' },
-  { code:'D08', name:'Patching' },
-  { code:'D09', name:'Giftware' },
-  { code:'D10', name:'Engraving' },
-  { code:'D11', name:'Shoecare' },
-  { code:'D12', name:'Shell' },
-  { code:'D13', name:'Sharpening' },
-  { code:'D14', name:'Watch Repairs' },
-  { code:'D15', name:'Miscellaneous' },
-  { code:'D16', name:'Stitching' },
-  { code:'D17', name:'Stitch' }
+const depts = [
+  {id:'01', n:'Remotes'}, {id:'02', n:'Patching'}, {id:'03', n:'Shells'}, 
+  {id:'04', n:'Stitch'}, {id:'05', n:'Transponders'}, {id:'06', n:'Heel & Sole'},
+  {id:'07', n:'Shoecare'}, {id:'08', n:'Misc'}, {id:'09', n:'Bands'},
+  {id:'10', n:'Keys'}, {id:'11', n:'Engraving'}, {id:'12', n:'W.30 Repair'},
+  {id:'13', n:'Batteries'}, {id:'14', n:'Glue'}, {id:'15', n:'Giftware'}, {id:'16', n:'Sharp'}
 ];
 
-var MONTHS = ['January','February','March','April','May','June',
-              'July','August','September','October','November','December'];
-var DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-
-var scriptUrl  = localStorage.getItem('tfg_url')      || '';
-var geminiKey  = localStorage.getItem('tfg_gemini')   || '';
-var geminiKey  = localStorage.getItem('tfg_gemini')   || '';
-var salesData  = JSON.parse(localStorage.getItem('tfg_data') || '[]');
-var receiptB64 = null;  // base64 of uploaded receipt image
-var scannedData = null; // parsed data from AI scan
-
-// ═══════════════════════════════
-//  INIT
-// ═══════════════════════════════
-
+document.addEventListener('DOMContentLoaded', () => {
+  const cont = document.getElementById('dept-container');
+  depts.forEach(d => {
+    cont.innerHTML += `
+      <div class="dept-row">
+        <span style="font-size:10px; font-weight:700; color:var(--gd);">${d.id}</span>
+        <span style="font-size:13px;">${d.n}</span>
+        <input type="number" class="n-inp calc dept-j" placeholder="0">
+        <input type="number" class="d-inp calc dept-s" placeholder="0.00" step="0.01">
+      </div>`;
+  });
+  document.getElementById('sales-date').value = new Date().toISOString().split('T')[0];
+  updateDayLabel();
+  document.querySelectorAll('.calc').forEach(i => i.addEventListener('input', calculate));
+  if(localStorage.getItem('tfg_url')) document.getElementById('script-url').value = localStorage.getItem('tfg_url');
+});
 
 function updateDayLabel() {
-  var v = document.getElementById('sales-date').value;
-  if (!v) return;
-  var d = new Date(v + 'T12:00:00');
-  document.getElementById('day-label').textContent =
-    DAYS[d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+  const d = new Date(document.getElementById('sales-date').value);
+  document.getElementById('day-label').innerText = d.toLocaleDateString('en-AU', { weekday:'long', day:'numeric', month:'long' });
 }
 
-function buildDeptRows() {
-  var html = '';
-  DEPTS.forEach(function(dept) {
-    var id = dept.code;
-    html += '<div class="dept-row">' +
-      '<span class="dept-code">' + id + '</span>' +
-      '<span class="dept-name">' + dept.name + '</span>' +
-      '<div style="display:flex;justify-content:flex-end;padding:5px 0">' +
-        '<input type="number" class="n-inp" id="j_'+id+'" placeholder="0" min="0" oninput="updateTotals()">' +
-      '</div>' +
-      '<div style="display:flex;justify-content:flex-end;padding:5px 0">' +
-        '<input type="number" class="d-inp" id="s_'+id+'" placeholder="0.00" min="0" step="0.01" oninput="updateTotals();updateDiff()">' +
-      '</div>' +
-      '</div>';
-  });
-  document.getElementById('dept-rows').innerHTML = html;
+function calculate() {
+  let jTotal = 0, sTotal = 0;
+  document.querySelectorAll('.dept-j').forEach(el => jTotal += Number(el.value || 0));
+  document.querySelectorAll('.dept-s').forEach(el => sTotal += Number(el.value || 0));
+  
+  const cash = Number(document.getElementById('cash').value || 0);
+  const eft = Number(document.getElementById('eftpos').value || 0);
+  const bank = cash + eft;
+  const diff = bank - sTotal;
+
+  document.getElementById('t-jobs').innerText = jTotal;
+  document.getElementById('t-sales').innerText = '$' + sTotal.toFixed(2);
+  document.getElementById('banking').innerText = '$' + bank.toFixed(2);
+  
+  const dBar = document.getElementById('diff-bar');
+  const dVal = document.getElementById('diff-val');
+  dVal.innerText = (diff >= 0 ? '+' : '') + '$' + diff.toFixed(2);
+  dBar.className = Math.abs(diff) < 0.01 ? 'diff-bar ok' : 'diff-bar under';
 }
 
-// ═══════════════════════════════
-//  RECEIPT SCANNER
-// ═══════════════════════════════
-function handleImage(input) {
-  var file = input.files[0];
-  if (!file) return;
+async function submitData() {
+  const url = localStorage.getItem('tfg_url');
+  if(!url) return alert("Go to Setup first!");
+  
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true; btn.innerText = "Syncing...";
 
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    receiptB64 = e.target.result.split(',')[1]; // strip data:image/... prefix
+  const dateVal = document.getElementById('sales-date').value;
+  const dayName = new Date(dateVal).toLocaleDateString('en-AU', { weekday:'short' });
 
-    var prev = document.getElementById('receipt-preview');
-    prev.src = e.target.result;
-    prev.classList.add('show');
-
-    document.getElementById('upload-zone').style.display = 'none';
-    document.getElementById('btn-scan').classList.add('show');
-    document.getElementById('scan-result').classList.remove('show');
-    scannedData = null;
+  const payload = {
+    date: dateVal,                                          // Col A
+    day: dayName,                                           // Col B
+    customers: document.getElementById('customers').value || 0, // Col C
+    total_jobs: document.getElementById('t-jobs').innerText, // Col D
+    total_sales: document.getElementById('t-sales').innerText.replace('$',''), // Col E
+    cash: document.getElementById('cash').value || 0,       // Col F
+    eftpos: document.getElementById('eftpos').value || 0,   // Col G
+    notes: document.getElementById('notes').value,          // Col H
+    timestamp: new Date().toISOString()                     // Col I
   };
-  reader.readAsDataURL(file);
-}
-
-async function scanReceipt() {
-  if (!receiptB64) return;
-
-  if (!geminiKey) {
-    alert('Gemini API key not saved.\n\nGo to Setup tab and paste your Gemini API key.');
-    return;
-  }
-
-  var btn = document.getElementById('btn-scan');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Reading receipt...';
-
-  var prompt = 'This is a till receipt from The Fix Guys shop in Erina Fair, Australia. ' +
-    'The departments on the receipt use these codes: ' +
-    'D01=Batteries, D02=Watch Bands, D03=Transponders, D04=Remotes, D05=Glue, ' +
-    'D06=House Keys, D07=Heels & Soles, D08=Patching, D09=Giftware, D10=Engraving, ' +
-    'D11=Shoecare, D12=Shell, D13=Sharpening, D14=Watch Repairs, D15=Miscellaneous, ' +
-    'D16=Stitching, D17=Stitch. ' +
-    'For each department code that appears on the receipt, extract: ' +
-    '(1) the quantity — the number after the letter Q on the same line as the dept code, ' +
-    '(2) the dollar amount — the number starting with * on the NEXT line (remove the asterisk). ' +
-    'Also extract: CASH amount (the * number on the CASH line), ' +
-    'CREDIT1 amount (the * number on the CREDIT1 line) — this is EFTPOS, ' +
-    'and GUEST count (the number after GUEST). ' +
-    'Return ONLY a raw JSON object with no markdown formatting, no code blocks, no explanation. ' +
-    'Example format: {"departments":{"D01":{"qty":7,"amount":170.00},"D06":{"qty":2,"amount":18.95}},"cash":228.85,"eftpos":180.95,"customers":18}';
 
   try {
-    var response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + geminiKey,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [
-            { inline_data: { mime_type: 'image/jpeg', data: receiptB64 } },
-            { text: prompt }
-          ]}],
-          generationConfig: { temperature: 0, maxOutputTokens: 1024 }
-        })
-      }
-    );
-
-    var data = await response.json();
-    if (data.error) throw new Error(data.error.message);
-
-    var text = data.candidates[0].content.parts[0].text;
-    text = text.replace(/```json|```/g, '').trim();
-
-    var jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Could not read receipt data. Try a clearer photo.');
-
-    scannedData = JSON.parse(jsonMatch[0]);
-    showScanResult(scannedData);
-
-  } catch(err) {
-    btn.disabled = false;
-    btn.innerHTML = 'Scan Receipt with AI \u2192';
-    alert('Scan failed: ' + err.message);
-  }
-}
-
-
-function showScanResult(data) {
-  var btn = document.getElementById('btn-scan');
+    await fetch(url, { method:'POST', mode:'no-cors', body:JSON.stringify(payload) });
+    alert("✅ Synced to Google Sheets!");
+    location.reload(); 
+  } catch(e) { alert("Error connecting to Google."); }
   btn.disabled = false;
-  btn.innerHTML = '🔄 Re-scan Receipt';
-
-  var html = '<thead><tr><th>Dept</th><th>Name</th><th>Jobs</th><th>Sales</th></tr></thead><tbody>';
-  if (data.departments) {
-    Object.keys(data.departments).forEach(function(code) {
-      var d = data.departments[code];
-      var dept = DEPTS.find(function(x) { return x.code === code; });
-      var name = dept ? dept.name : code;
-      html += '<tr><td><strong>' + code + '</strong></td><td>' + name + '</td>' +
-              '<td>' + (d.qty||0) + '</td>' +
-              '<td>$' + (d.amount||0).toFixed(2) + '</td></tr>';
-    });
-  }
-  html += '</tbody>';
-  if (data.cash !== undefined || data.eftpos !== undefined || data.customers !== undefined) {
-    html += '<tfoot><tr><td colspan="2" style="padding-top:8px;border-top:2px solid var(--gm);font-weight:700;color:var(--gd)">Summary</td>' +
-            '<td style="padding-top:8px;border-top:2px solid var(--gm)">Custs: ' + (data.customers||0) + '</td>' +
-            '<td style="padding-top:8px;border-top:2px solid var(--gm)">Cash: $' + (data.cash||0).toFixed(2) + ' | EFTPOS: $' + (data.eftpos||0).toFixed(2) + '</td></tr></tfoot>';
-  }
-
-  document.getElementById('scan-table').innerHTML = html;
-  document.getElementById('scan-result').classList.add('show');
 }
 
-function applyScannedData() {
-  if (!scannedData) return;
-
-  // Clear scanned highlights
-  document.querySelectorAll('.n-inp, .d-inp, .cash-inp, .cust-inp').forEach(function(el) {
-    el.classList.remove('scanned');
-  });
-
-  // Apply departments
-  if (scannedData.departments) {
-    Object.keys(scannedData.departments).forEach(function(code) {
-      var d = scannedData.departments[code];
-      var jEl = document.getElementById('j_' + code);
-      var sEl = document.getElementById('s_' + code);
-      if (jEl && d.qty) {
-        jEl.value = d.qty;
-        jEl.classList.add('scanned');
-      }
-      if (sEl && d.amount) {
-        sEl.value = d.amount.toFixed(2);
-        sEl.classList.add('scanned');
-      }
-    });
-  }
-
-  // Apply cash/eftpos/customers
-  if (scannedData.cash !== undefined) {
-    var c = document.getElementById('cash');
-    c.value = scannedData.cash.toFixed(2);
-    c.classList.add('scanned');
-  }
-  if (scannedData.eftpos !== undefined) {
-    var e = document.getElementById('eftpos');
-    e.value = scannedData.eftpos.toFixed(2);
-    e.classList.add('scanned');
-  }
-  if (scannedData.customers !== undefined) {
-    var cu = document.getElementById('customers');
-    cu.value = scannedData.customers;
-    cu.classList.add('scanned');
-  }
-
-  updateTotals();
-  updateDiff();
-
-  // Scroll to form
-  document.getElementById('dept-rows').scrollIntoView({ behavior:'smooth', block:'start' });
-}
-
-// ═══════════════════════════════
-//  TOTALS + DIFF
-// ═══════════════════════════════
-function updateTotals() {
-  var jobs=0, sales=0;
-  DEPTS.forEach(function(dept) {
-    jobs  += parseInt(document.getElementById('j_'+dept.code).value)   || 0;
-    sales += parseFloat(document.getElementById('s_'+dept.code).value) || 0;
-  });
-  document.getElementById('t-jobs').textContent  = jobs;
-  document.getElementById('t-sales').textContent = '$' + sales.toFixed(2);
-  return { jobs:jobs, sales:sales };
-}
-
-function updateDiff() {
-  var totals  = updateTotals();
-  var cash    = parseFloat(document.getElementById('cash').value)   || 0;
-  var eftpos  = parseFloat(document.getElementById('eftpos').value) || 0;
-  var banking = cash + eftpos;
-  document.getElementById('banking').textContent = '$' + banking.toFixed(2);
-
-  var diff = banking - totals.sales;
-  var bar  = document.getElementById('diff-bar');
-  var lbl  = document.getElementById('diff-lbl');
-  var val  = document.getElementById('diff-val');
-  val.textContent = diff===0 ? '$0.00' : (diff>0?'+$':'-$') + Math.abs(diff).toFixed(2);
-  if (diff===0)      { bar.className='diff-bar ok';    lbl.textContent='Balanced ✓'; }
-  else if (diff>0)   { bar.className='diff-bar over';  lbl.textContent='Over by'; }
-  else               { bar.className='diff-bar under'; lbl.textContent='Short by'; }
-}
-
-// ═══════════════════════════════
-//  COLLECT + SUBMIT
-// ═══════════════════════════════
-function collectData() {
-  var totals = updateTotals();
-  var cats   = {};
-  DEPTS.forEach(function(dept) {
-    cats[dept.code] = {
-      name:  dept.name,
-      jobs:  parseInt(document.getElementById('j_'+dept.code).value)   || 0,
-      sales: parseFloat(document.getElementById('s_'+dept.code).value) || 0
-    };
-  });
-  return {
-    date:       document.getElementById('sales-date').value,
-    customers:  parseInt(document.getElementById('customers').value)  || 0,
-    totalJobs:  totals.jobs,
-    totalSales: totals.sales,
-    cash:       parseFloat(document.getElementById('cash').value)    || 0,
-    eftpos:     parseFloat(document.getElementById('eftpos').value)   || 0,
-    notes:      document.getElementById('notes').value,
-    departments:cats,
-    submittedAt:new Date().toISOString()
-  };
-}
-
-function submitSales() {
-  var data = collectData();
-  if (data.totalSales===0 && data.totalJobs===0) {
-    alert('Please enter at least one sale before submitting.');
-    return;
-  }
-  var btn = document.getElementById('btn-submit');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Submitting...';
-
-  // Save locally
-  salesData = salesData.filter(function(d){ return d.date!==data.date; });
-  salesData.push(data);
-  salesData.sort(function(a,b){ return a.date.localeCompare(b.date); });
-  localStorage.setItem('tfg_data', JSON.stringify(salesData));
-
-  if (scriptUrl) {
-    // Send sales data
-    var salesPost = fetch(scriptUrl, {
-      method:'POST', mode:'no-cors',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ type:'sales', data: data })
-    });
-
-    // Send receipt image if available
-    var imgPost = receiptB64 ? fetch(scriptUrl, {
-      method:'POST', mode:'no-cors',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        type:      'image',
-        imageData: receiptB64,
-        filename:  'receipt_' + data.date + '.jpg',
-        date:      data.date
-      })
-    }) : Promise.resolve();
-
-    Promise.all([salesPost, imgPost]).then(function() {
-      showSuccess('Saved locally, synced to Google Sheets' + (receiptB64?' and receipt saved to Google Drive.':'.'));
-    }).catch(function() {
-      showSuccess('Saved locally. Sync failed — check Setup.');
-    });
-  } else {
-    setTimeout(function() {
-      showSuccess('Saved locally. Connect Google Sheets in Setup to sync automatically.');
-    }, 500);
-  }
-}
-
-function showSuccess(msg) {
-  document.getElementById('btn-submit').style.display = 'none';
-  document.getElementById('success').classList.add('show');
-  document.getElementById('success-msg').textContent = msg;
-}
-
-function resetForm() {
-  document.getElementById('success').classList.remove('show');
-  document.getElementById('btn-submit').style.display = 'block';
-  document.getElementById('btn-submit').disabled = false;
-  document.getElementById('btn-submit').innerHTML = 'Submit Sales Data';
-
-  DEPTS.forEach(function(dept) {
-    document.getElementById('j_'+dept.code).value = '';
-    document.getElementById('s_'+dept.code).value = '';
-  });
-  document.querySelectorAll('.n-inp,.d-inp,.cash-inp,.cust-inp').forEach(function(el){ el.classList.remove('scanned'); });
-  document.getElementById('customers').value = '';
-  document.getElementById('cash').value = '';
-  document.getElementById('eftpos').value = '';
-  document.getElementById('notes').value = '';
-
-  // Reset scanner
-  receiptB64 = null; scannedData = null;
-  document.getElementById('receipt-preview').classList.remove('show');
-  document.getElementById('upload-zone').style.display = '';
-  document.getElementById('btn-scan').classList.remove('show');
-  document.getElementById('scan-result').classList.remove('show');
-  document.getElementById('receipt-file').value = '';
-  var gal = document.getElementById('receipt-file-gallery');
-  if (gal) gal.value = '';
-
-  updateTotals(); updateDiff();
-
-  // Advance date
-  var d = new Date(document.getElementById('sales-date').value + 'T12:00:00');
-  d.setDate(d.getDate()+1);
-  document.getElementById('sales-date').value = d.toISOString().split('T')[0];
-  updateDayLabel();
-}
-
-// ═══════════════════════════════
-//  PAGE SWITCHING
-// ═══════════════════════════════
-function showPage(name) {
-  document.getElementById('pg-entry').style.display = name==='entry' ? 'block' : 'none';
-  document.getElementById('pg-setup').style.display = name==='setup' ? 'block' : 'none';
-  document.getElementById('nav-entry').classList.toggle('active', name==='entry');
-  document.getElementById('nav-setup').classList.toggle('active', name==='setup');
-  if (name==='setup') showConnStatus();
-}
-
-// ═══════════════════════════════
-//  SETUP
-// ═══════════════════════════════
-function checkSetupWarn() {
-  document.getElementById('setup-warn').style.display = scriptUrl ? 'none' : 'block';
-}
-
-function saveUrl() {
-  var val = document.getElementById('url-inp').value.trim();
-  if (!val) { alert('Please paste your Apps Script URL first.'); return; }
-  scriptUrl = val;
-  localStorage.setItem('tfg_url', val);
-  var m = document.getElementById('saved-lbl');
-  m.style.display = 'inline';
-  setTimeout(function(){ m.style.display='none'; }, 2500);
-  checkSetupWarn();
-  if (geminiKey && document.getElementById('gemini-inp')) document.getElementById('gemini-inp').value = geminiKey;
-  showConnStatus();
-}
-
-
-function saveGeminiKey() {
-  var val = document.getElementById('gemini-inp').value.trim();
-  if (!val) { alert('Please paste your Gemini API key first.'); return; }
-  geminiKey = val;
-  localStorage.setItem('tfg_gemini', val);
-  var m = document.getElementById('gemini-saved-lbl');
-  m.style.display = 'inline';
-  setTimeout(function(){ m.style.display='none'; }, 2500);
-  showGeminiStatus();
-}
-
-function showGeminiStatus() {
-  var el = document.getElementById('gemini-status');
-  if (!el) return;
-  el.innerHTML = geminiKey
-    ? '<div class="conn-ok">✓ Gemini AI connected — receipt scanner is ready.</div>'
-    : '<div class="conn-warn">⚠️ No key saved. Get a free key at aistudio.google.com/apikey</div>';
-}
-
-function saveGeminiKey() {
-  var val = document.getElementById('gemini-inp').value.trim();
-  if (!val) { alert('Please paste your Gemini API key first.'); return; }
-  geminiKey = val;
-  localStorage.setItem('tfg_gemini', val);
-  var m = document.getElementById('gemini-saved-lbl');
-  m.style.display = 'inline';
-  setTimeout(function(){ m.style.display='none'; }, 2500);
-  showGeminiStatus();
-}
-
-function showGeminiStatus() {
-  var el = document.getElementById('gemini-status');
-  if (!el) return;
-  el.innerHTML = geminiKey
-    ? '<div class="conn-ok">✓ Google AI connected — receipt scanner is ready.</div>'
-    : '<div class="conn-warn">⚠️ No key saved. Paste your Gemini API key above.</div>';
-}
-
-function showConnStatus() {
-  var el = document.getElementById('conn-status');
-  if (!el) return;
-  el.innerHTML = scriptUrl
-    ? '<div class="conn-ok">✓ Connected to Google Sheets + Drive. Sales and receipts will sync on every submission.</div>'
-    : '<div class="conn-warn">⚠️ Not connected. Paste your Apps Script URL above and click Save.</div>';
-}
-
-function copyScript() {
-  navigator.clipboard.writeText(document.getElementById('script-code').textContent)
-    .then(function(){ alert('Script copied — paste into Apps Script editor.'); });
-}
-
-function setScriptCode() {
-  document.getElementById('script-code').textContent =
-`// ── HANDLE GET (receipt scan — readable response with CORS) ──
-function doGet(e) {
+async function loadHistory() {
+  const url = localStorage.getItem('tfg_url');
+  const list = document.getElementById('history-list');
+  if(!url) return list.innerHTML = "<p style='padding:20px'>Setup URL first.</p>";
+  
+  list.innerHTML = "<p style='padding:20px'>Loading Cloud Data...</p>";
   try {
-    if (e.parameter.type === 'scan') {
-      var result = scanReceipt(e.parameter.imageData, e.parameter.mimeType || 'image/jpeg');
-      return ContentService
-        .createTextOutput(JSON.stringify(result))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-    return ContentService.createTextOutput(JSON.stringify({status:'ok'}))
-      .setMimeType(ContentService.MimeType.JSON);
-  } catch(err) {
-    return ContentService.createTextOutput(JSON.stringify({error: err.toString()}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
+    const res = await fetch(url + "?action=get");
+    const data = await res.json();
+    list.innerHTML = data.map(r => `
+      <div style="padding:12px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
+        <span><b>${r.date}</b></span>
+        <span style="color:var(--red); font-weight:700;">$${r.total_sales}</span>
+      </div>`).join('');
+  } catch(e) { list.innerHTML = "<p style='padding:20px'>No data found yet.</p>"; }
 }
 
-// ── SCAN RECEIPT WITH GEMINI ──
-function scanReceipt(imageData, mimeType) {
-  var apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY');
-  if (!apiKey) return {error: 'Gemini API key not set. Run setGeminiKey() in Apps Script first.'};
-
-  var prompt = 'This is a till receipt from The Fix Guys shop in Erina Fair, Australia. ' +
-    'Departments: D01=Batteries, D02=Watch Bands, D03=Transponders, D04=Remotes, D05=Glue, ' +
-    'D06=House Keys, D07=Heels & Soles, D08=Patching, D09=Giftware, D10=Engraving, ' +
-    'D11=Shoecare, D12=Shell, D13=Sharpening, D14=Watch Repairs, D15=Miscellaneous, ' +
-    'D16=Stitching, D17=Stitch. ' +
-    'Extract the quantity (the number after Q on the same line as each department code) ' +
-    'and dollar amount (the number after the asterisk * on the next line) for each dept shown. ' +
-    'Also extract: CASH amount (after CASH line), CREDIT1 amount (after CREDIT1 line), and GUEST count (after GUEST line). ' +
-    'Return ONLY raw JSON, no markdown, no backticks: ' +
-    '{"departments":{"D01":{"qty":7,"amount":170.00},"D06":{"qty":2,"amount":18.95}},"cash":228.85,"eftpos":180.95,"customers":18}';
-
-  var geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
-
-  var payload = {
-    contents: [{
-      parts: [
-        { inline_data: { mime_type: mimeType, data: imageData } },
-        { text: prompt }
-      ]
-    }],
-    generationConfig: { temperature: 0, maxOutputTokens: 1024 }
-  };
-
-  var options = {
-    method: 'post',
-    contentType: 'application/json',
-    payload: JSON.stringify(payload),
-    muteHttpExceptions: true
-  };
-
-  var response = UrlFetchApp.fetch(geminiUrl, options);
-  var data = JSON.parse(response.getContentText());
-
-  if (data.error) return {error: data.error.message};
-
-  var text = data.candidates[0].content.parts[0].text;
-  text = text.replace(/\`\`\`json|\`\`\`/g, '').trim();
-  var jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return {error: 'Could not parse receipt — try a clearer photo'};
-  return JSON.parse(jsonMatch[0]);
+function showTab(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pg-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id === 'history') loadHistory();
 }
 
-// ── HANDLE POST (sales data + image save) ──
-function doPost(e) {
-  try {
-    var payload = JSON.parse(e.postData.contents);
-
-    // ── RECEIPT IMAGE to Google Drive ──
-    if (payload.type === 'image') {
-      var folders = DriveApp.getFoldersByName('TFG Daily Receipts');
-      var folder  = folders.hasNext() ? folders.next() : DriveApp.createFolder('TFG Daily Receipts');
-      var bytes   = Utilities.base64Decode(payload.imageData);
-      var blob    = Utilities.newBlob(bytes, 'image/jpeg', payload.filename || 'receipt.jpg');
-      folder.createFile(blob);
-      return ContentService
-        .createTextOutput(JSON.stringify({status:'ok',type:'image'}))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    // ── SALES DATA to Google Sheets ──
-    var data  = payload.data || payload;
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Sales') ||
-                SpreadsheetApp.getActiveSpreadsheet().insertSheet('Sales');
-    var codes = ['D01','D02','D03','D04','D05','D06','D07','D08','D09',
-                 'D10','D11','D12','D13','D14','D15','D16','D17'];
-    var depts = data.departments || {};
-
-    if (sheet.getLastRow() === 0) {
-      var h = ['Date','Day','Customers','Total Jobs','Total Sales','Cash','EFTPOS','Notes','Submitted'];
-      codes.forEach(function(c) { h.push(c+' Jobs'); h.push(c+' $'); });
-      sheet.appendRow(h);
-    }
-
-    var d  = new Date(data.date + 'T12:00:00');
-    var dn = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    var row = [data.date, dn[d.getDay()], data.customers||0, data.totalJobs||0,
-               data.totalSales||0, data.cash||0, data.eftpos||0,
-               data.notes||'', data.submittedAt||''];
-    codes.forEach(function(c) {
-      var dept = depts[c] || {};
-      row.push(dept.jobs||0);
-      row.push(dept.sales||0);
-    });
-    sheet.appendRow(row);
-
-    return ContentService
-      .createTextOutput(JSON.stringify({status:'ok',type:'sales'}))
-      .setMimeType(ContentService.MimeType.JSON);
-
-  } catch(err) {
-    return ContentService
-      .createTextOutput(JSON.stringify({status:'error',msg:err.toString()}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
+function saveSetup() {
+  localStorage.setItem('tfg_url', document.getElementById('script-url').value);
+  alert("URL Saved!");
 }
-
-// ── Run this ONCE to save your Gemini key ──
-function setGeminiKey() {
-  PropertiesService.getScriptProperties().setProperty('GEMINI_KEY', 'PASTE_YOUR_KEY_HERE');
-  Logger.log('Gemini key saved.');
-}`
-}
-
-// ── HISTORY SCRIPT ──
-var DEPTS = [
-  {code:'D01',name:'Batteries'},{code:'D02',name:'Watch Bands'},{code:'D03',name:'Transponders'},
-  {code:'D04',name:'Remotes'},{code:'D05',name:'Glue'},{code:'D06',name:'House Keys'},
-  {code:'D07',name:'Heels & Soles'},{code:'D08',name:'Patching'},{code:'D09',name:'Giftware'},
-  {code:'D10',name:'Engraving'},{code:'D11',name:'Shoecare'},{code:'D12',name:'Shell'},
-  {code:'D13',name:'Sharpening'},{code:'D14',name:'Watch Repairs'},{code:'D15',name:'Miscellaneous'},
-  {code:'D16',name:'Stitching'},{code:'D17',name:'Stitch'}
-];
-var MONTHS   = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-var MONTHS_S = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-var DAYS_S   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-var DAYS_F   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-
-var salesData  = JSON.parse(localStorage.getItem('tfg_data') || '[]');
-var lookup     = buildLookup();
-var scriptUrl  = localStorage.getItem('tfg_url') || '';
-var syncStatus = 'local'; // 'local' | 'syncing' | 'synced' | 'error' 
-var curView    = 'month';
-var curYear    = new Date().getFullYear();
-var curMonth   = new Date().getMonth();
-var curWeekMon = weekMonday(new Date());
-var rangeMode  = false;
-var rStart=null, rEnd=null, selected=null;
-
-var T_MID=1000, T_NORM=1900, T_SPEC=2300, SPEC=[4,6];
-
-function buildLookup() {
-  var m={};
-  salesData.forEach(function(d){m[d.date]=d;});
-  return m;
-}
-
-function heat(dateStr, amt) {
-  if (!amt) return '';
-  var dow  = new Date(dateStr+'T12:00:00').getDay();
-  var busy = SPEC.indexOf(dow)>=0 ? T_SPEC : T_NORM;
-  if (amt<T_MID)    return 'slow';
-  if (amt<busy)     return 'mid';
-  if (amt<busy*1.2) return 'good';
-  return 'busy';
-}
-
-function dotColor(h) {
-  var m={slow:'#fca5a5',mid:'#fde047',good:'#86efac',busy:'#16a34a'};
-  return m[h]||'#e6e6e6';
-}
-
-function fmt(n) { return n===null||n===undefined ? '—' : '$'+n.toFixed(2); }
-function fmtS(dateStr) {
-  var d=new Date(dateStr+'T12:00:00');
-  return DAYS_S[d.getDay()]+' '+d.getDate()+' '+MONTHS_S[d.getMonth()]+' '+d.getFullYear();
-}
-function isoDate(y,m,d) {
-  return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-}
-function weekMonday(date) {
-  var d=new Date(date); var dow=d.getDay()||7;
-  d.setDate(d.getDate()-(dow-1)); d.setHours(12,0,0,0); return d;
-}
-function addDays(date,n) { var d=new Date(date); d.setDate(d.getDate()+n); return d; }
-
-
-
-function setBanner(type, msg) {
-  var banner = document.getElementById('sync-banner');
-  var icon   = document.getElementById('sync-icon');
-  var text   = document.getElementById('sync-text');
-  if (!banner) return;
-  if (type === 'syncing') {
-    banner.style.background='var(--gl)'; banner.style.borderColor='var(--gm)'; banner.style.color='var(--gd)';
-    icon.textContent='⏳'; text.textContent=msg||'Syncing from Google Sheets...';
-  } else if (type === 'synced') {
-    banner.style.background='var(--grn-l)'; banner.style.borderColor='var(--grn-b)'; banner.style.color='var(--grn)';
-    icon.textContent='✅'; text.textContent=msg||'Synced with Google Sheets';
-  } else if (type === 'local') {
-    banner.style.background='var(--amb-l)'; banner.style.borderColor='#fde047'; banner.style.color='#92400e';
-    icon.textContent='⚠️'; text.textContent=msg||'Showing local data only — Google Sheets not connected';
-  } else if (type === 'error') {
-    banner.style.background='#fef2f2'; banner.style.borderColor='#fca5a5'; banner.style.color='var(--red-dk)';
-    icon.textContent='🔴'; text.textContent=msg||'Could not sync — showing last saved data';
-  }
-}
-
-function syncFromSheets() {
-  if (!scriptUrl) {
-    setBanner('local', 'Showing data from this device only — connect Google Sheets in Setup to sync across devices');
-    return;
-  }
-
-  setBanner('syncing', 'Syncing from Google Sheets...');
-
-  fetch(scriptUrl + '?type=all_sales', { method: 'GET', redirect: 'follow' })
-    .then(function(r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(function(data) {
-      if (data.status === 'ok' && data.rows && data.rows.length > 0) {
-        var sheetsMap = {};
-        data.rows.forEach(function(r) { sheetsMap[r.date] = r; });
-        var localData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
-        localData.forEach(function(r) {
-          if (!sheetsMap[r.date]) sheetsMap[r.date] = r;
-        });
-        salesData = Object.values(sheetsMap).sort(function(a,b){
-          return a.date.localeCompare(b.date);
-        });
-        lookup = buildLookup();
-        localStorage.setItem('tfg_data', JSON.stringify(salesData));
-        render();
-        var now = new Date();
-        var time = now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0');
-        setBanner('synced', 'Synced with Google Sheets — ' + data.rows.length + ' days of data — last updated ' + time);
-      } else if (data.status === 'ok' && (!data.rows || data.rows.length === 0)) {
-        setBanner('local', 'No data found in Google Sheets yet — showing local data');
-      } else {
-        setBanner('error', 'Sync error — showing last saved data from this device');
-      }
-    })
-    .catch(function(err) {
-      setBanner('error', 'Could not reach Google Sheets — showing local data. Check your internet connection.');
-    });
-}
-
-function setView(name) {
-  curView=name;
-  ['month','week','year'].forEach(function(v){
-    document.getElementById('view-'+v).style.display=v===name?'block':'none';
-    document.getElementById('vt-'+v).classList.toggle('active',v===name);
-  });
-  document.getElementById('range-bar').style.display=name==='week'?'none':'flex';
-  clearRange(); clearDetail(); render();
-}
-
-function render() {
-  if(curView==='month') renderMonth();
-  if(curView==='week')  renderWeek();
-  if(curView==='year')  renderYear();
-}
-
-function goToday() {
-  var n=new Date(); curYear=n.getFullYear(); curMonth=n.getMonth(); curWeekMon=weekMonday(n);
-  clearRange(); clearDetail(); render();
-}
-
-/* ── MONTH ── */
-function changeMonth(dir) {
-  curMonth+=dir;
-  if(curMonth<0){curMonth=11;curYear--;}
-  if(curMonth>11){curMonth=0;curYear++;}
-  clearRange(); clearDetail(); render();
-}
-
-function renderMonth() {
-  document.getElementById('month-title').textContent=MONTHS[curMonth]+' '+curYear;
-  var today=new Date().toISOString().split('T')[0];
-  var firstDow=new Date(curYear,curMonth,1).getDay();
-  var offset=(firstDow+6)%7;
-  var dim=new Date(curYear,curMonth+1,0).getDate();
-  var html='';
-  for(var i=0;i<offset;i++) html+='<div class="m-day m-empty"></div>';
-  for(var day=1;day<=dim;day++) {
-    var ds=isoDate(curYear,curMonth,day);
-    var rec=lookup[ds];
-    var h=rec?heat(ds,rec.totalSales):'';
-    var cls='m-day'+(h?' h-'+h:'')+(ds===today?' today':'');
-    if(rangeMode){
-      if(ds===rStart||ds===rEnd) cls+=' m-rng-se';
-      else if(rStart&&rEnd&&ds>rStart&&ds<rEnd) cls+=' m-in-rng';
-      else if(rStart&&!rEnd&&ds===rStart) cls+=' m-rng-se';
-    } else if(ds===selected) cls+=' m-sel';
-    var slbl=rec?(rec.totalSales>=1000?'$'+(rec.totalSales/1000).toFixed(1)+'k':'$'+rec.totalSales.toFixed(0)):'';
-    html+='<div class="'+cls+'" onclick="dayClick(\''+ds+'\')">' +
-      '<div class="m-num">'+day+'</div>' +
-      (slbl?'<div class="m-sales">'+slbl+'</div>':'') +
-      (rec?'<div class="m-jobs">'+rec.totalJobs+' jobs</div>':'') +
-      '</div>';
-  }
-  document.getElementById('month-days').innerHTML=html;
-}
-
-/* ── WEEK ── */
-function changeWeek(dir) { curWeekMon=addDays(curWeekMon,dir*7); clearDetail(); render(); }
-
-function renderWeek() {
-  var mon=curWeekMon, sun=addDays(mon,6);
-  document.getElementById('week-title').textContent=
-    'Week: '+mon.getDate()+' '+MONTHS_S[mon.getMonth()]+' – '+sun.getDate()+' '+MONTHS_S[sun.getMonth()]+' '+sun.getFullYear();
-  var tS=0,tJ=0,tC=0, rows='';
-  for(var i=0;i<7;i++) {
-    var d=addDays(mon,i), ds=d.toISOString().split('T')[0];
-    var rec=lookup[ds];
-    var h=rec?heat(ds,rec.totalSales):'';
-    var dot='<span class="dot" style="background:'+dotColor(h)+'"></span>';
-    var pc=(rec&&rec.customers>0)?'$'+(rec.totalSales/rec.customers).toFixed(2):'—';
-    if(rec){tS+=rec.totalSales;tJ+=rec.totalJobs;tC+=rec.customers;}
-    rows+='<tr onclick="'+(rec?'dayClick(\''+ds+'\')':'')+'">'+
-      '<td>'+dot+'<strong>'+DAYS_S[d.getDay()]+'</strong> '+d.getDate()+' '+MONTHS_S[d.getMonth()]+'</td>'+
-      '<td>'+(rec?'<span style="background:var(--grn-l);color:var(--grn);padding:2px 7px;border-radius:100px;font-size:10px;font-weight:700">✓</span>':'<span style="color:#aaa;font-size:11px">—</span>')+'</td>'+
-      '<td>'+(rec?rec.customers:'—')+'</td>'+
-      '<td>'+(rec?fmt(rec.totalSales):'—')+'</td>'+
-      '<td>'+pc+'</td>'+
-      '<td>'+(rec?rec.totalJobs:'—')+'</td>'+
-      '</tr>';
-  }
-  var avgC=tC>0?'$'+(tS/tC).toFixed(2):'—';
-  document.getElementById('week-tbl').innerHTML=
-    '<thead><tr><th>Date</th><th>Status</th><th>Customers</th><th>Sales</th><th>$/Cust</th><th>Jobs</th></tr></thead>'+
-    '<tbody>'+rows+'</tbody>'+
-    '<tfoot><tr><td colspan="2">TOTAL</td><td>'+tC+'</td><td>'+fmt(tS)+'</td><td>'+avgC+'</td><td>'+tJ+'</td></tr></tfoot>';
-}
-
-/* ── YEAR ── */
-function changeYear(dir) { curYear+=dir; clearRange(); clearDetail(); render(); }
-
-function renderYear() {
-  document.getElementById('year-title').textContent=curYear;
-  var today=new Date().toISOString().split('T')[0];
-  var html='';
-  for(var m=0;m<12;m++) {
-    var dim=new Date(curYear,m+1,0).getDate();
-    var firstDow=new Date(curYear,m,1).getDay();
-    var offset=(firstDow+6)%7;
-    var monTotal=0;
-    for(var d2=1;d2<=dim;d2++){var r=lookup[isoDate(curYear,m,d2)];if(r)monTotal+=r.totalSales;}
-    var totStr=monTotal>0?'$'+(monTotal/1000).toFixed(1)+'k':'';
-    html+='<div class="y-mon"><div class="y-mon-hd"><span class="y-mon-name">'+MONTHS[m]+'</span><span class="y-mon-total">'+totStr+'</span></div>';
-    html+='<div class="y-dow-row">'+['M','T','W','T','F','S','S'].map(function(l){return '<div class="y-dow">'+l+'</div>';}).join('')+'</div>';
-    html+='<div class="y-days">';
-    for(var i=0;i<offset;i++) html+='<div class="y-day y-empty"></div>';
-    for(var day=1;day<=dim;day++) {
-      var ds=isoDate(curYear,m,day);
-      var rec=lookup[ds];
-      var h=rec?heat(ds,rec.totalSales):'';
-      var cls='y-day'+(h?' yh-'+h:' y-no-data');
-      if(rangeMode){
-        if(ds===rStart||ds===rEnd) cls+=' y-rng-se';
-        else if(rStart&&rEnd&&ds>rStart&&ds<rEnd) cls+=' y-in-rng';
-        else if(rStart&&!rEnd&&ds===rStart) cls+=' y-rng-se';
-      } else if(ds===selected) cls+=' y-sel';
-      var amt=rec?(rec.totalSales>=1000?'$'+(rec.totalSales/1000).toFixed(1)+'k':'$'+rec.totalSales.toFixed(0)):'';
-      html+='<div class="'+cls+'" onclick="dayClick(\''+ds+'\')" title="'+ds+(rec?' — $'+rec.totalSales.toFixed(2):'')+'">' +
-        '<div class="y-num">'+day+'</div>'+(amt?'<div class="y-amt">'+amt+'</div>':'')+'</div>';
-    }
-    html+='</div></div>';
-  }
-  document.getElementById('year-grid').innerHTML=html;
-}
-
-/* ── RANGE ── */
-function toggleRange() {
-  rangeMode=!rangeMode; rStart=null; rEnd=null; selected=null;
-  var btn=document.getElementById('range-btn');
-  btn.classList.toggle('active',rangeMode);
-  btn.innerHTML='<div class="r-dot"></div>'+(rangeMode?'Range mode ON':'Select date range');
-  document.getElementById('range-hint').style.display=rangeMode?'inline':'none';
-  document.getElementById('range-lbl').classList.remove('show');
-  document.getElementById('clear-btn').classList.remove('show');
-  clearDetail(); render();
-}
-
-function clearRange() {
-  rStart=null; rEnd=null;
-  document.getElementById('range-lbl').classList.remove('show');
-  document.getElementById('clear-btn').classList.remove('show');
-  document.getElementById('range-hint').style.display=rangeMode?'inline':'none';
-  clearDetail(); render();
-}
-
-function updateRangeLbl() {
-  var d1=new Date(rStart+'T12:00:00');
-  var lbl=DAYS_S[d1.getDay()]+' '+d1.getDate()+' '+MONTHS_S[d1.getMonth()];
-  if(rEnd){var d2=new Date(rEnd+'T12:00:00');lbl+=' → '+DAYS_S[d2.getDay()]+' '+d2.getDate()+' '+MONTHS_S[d2.getMonth()];}
-  else lbl+=' → click end date';
-  document.getElementById('range-lbl').textContent=lbl;
-  document.getElementById('range-lbl').classList.add('show');
-}
-
-/* ── DAY CLICK ── */
-function dayClick(ds) {
-  if(rangeMode) {
-    if(!rStart||(rStart&&rEnd)){
-      rStart=ds; rEnd=null; clearDetail(); updateRangeLbl();
-    } else {
-      if(ds<rStart){rEnd=rStart;rStart=ds;}else{rEnd=ds;}
-      document.getElementById('range-hint').style.display='none';
-      document.getElementById('clear-btn').classList.add('show');
-      updateRangeLbl(); showRangePanel();
-    }
-    render();
-  } else {
-    if(selected===ds){selected=null;clearDetail();}
-    else{selected=ds;showDayPanel(ds);}
-    render();
-  }
-}
-
-/* ── DAY PANEL ── */
-function showDayPanel(ds) {
-  var rec=lookup[ds];
-  var dt=new Date(ds+'T12:00:00');
-  var title=DAYS_F[dt.getDay()]+' '+dt.getDate()+' '+MONTHS[dt.getMonth()]+' '+dt.getFullYear();
-  var h=rec?heat(ds,rec.totalSales):'';
-
-  if(!rec) {
-    setDetail('<div class="detail-panel"><div class="dp-hd dark"><div><div class="dp-title">'+title+'</div></div><button class="dp-close" onclick="closeDetail()">✕ Close</button></div><div class="dp-body"><div class="no-data-msg">No sales entered for this day.</div></div></div>');
-    return;
-  }
-
-  var perC=rec.customers>0?'$'+(rec.totalSales/rec.customers).toFixed(2):'—';
-  var dot='<span class="dot" style="background:'+dotColor(h)+'"></span>';
-
-  // Department rows
-  var catRows='';
-  var depts=rec.departments||{};
-  DEPTS.forEach(function(dept) {
-    var d=depts[dept.code]||{jobs:0,sales:0};
-    if(d.jobs>0||d.sales>0) {
-      catRows+='<tr><td><strong>'+dept.code+'</strong></td><td>'+dept.name+'</td><td>'+d.jobs+'</td><td>'+fmt(d.sales)+'</td></tr>';
-    }
-  });
-
-  setDetail('<div class="detail-panel">'+
-    '<div class="dp-hd red">'+
-      '<div><div class="dp-title">'+dot+title+'</div>'+
-        '<div class="dp-stats">'+
-          '<div class="dp-stat"><div class="ds-l">Sales</div><div class="ds-v">'+fmt(rec.totalSales)+'</div></div>'+
-          '<div class="dp-stat"><div class="ds-l">Jobs</div><div class="ds-v">'+rec.totalJobs+'</div></div>'+
-          '<div class="dp-stat"><div class="ds-l">Customers</div><div class="ds-v">'+rec.customers+'</div></div>'+
-          '<div class="dp-stat"><div class="ds-l">$/Cust</div><div class="ds-v">'+perC+'</div></div>'+
-        '</div>'+
-      '</div>'+
-      '<button class="dp-close" onclick="closeDetail()">✕ Close</button>'+
-    '</div>'+
-    '<div class="dp-body">'+
-      (catRows?'<table class="dp-tbl"><thead><tr><th>Code</th><th>Department</th><th>Jobs</th><th>Sales</th></tr></thead>'+
-        '<tbody>'+catRows+'</tbody>'+
-        '<tfoot><tr><td colspan="2">Total</td><td>'+rec.totalJobs+'</td><td>'+fmt(rec.totalSales)+'</td></tr></tfoot>'+
-        '</table>':'<p style="font-size:13px;color:var(--gd)">No department breakdown.</p>')+
-      '<div class="cash-row"><span>💵 Cash: <strong>'+fmt(rec.cash||0)+'</strong></span><span>💳 EFTPOS: <strong>'+fmt(rec.eftpos||0)+'</strong></span></div>'+
-      (rec.notes?'<div class="notes-row"><strong>Notes:</strong> '+rec.notes+'</div>':'')+
-    '</div></div>');
-}
-
-/* ── RANGE PANEL ── */
-function showRangePanel() {
-  var filtered=salesData.filter(function(d){return d.date>=rStart&&d.date<=rEnd;})
-                        .sort(function(a,b){return a.date.localeCompare(b.date);});
-  var d1=new Date(rStart+'T12:00:00'), d2=new Date(rEnd+'T12:00:00');
-  var title=DAYS_S[d1.getDay()]+' '+d1.getDate()+' '+MONTHS_S[d1.getMonth()]+
-    ' → '+DAYS_S[d2.getDay()]+' '+d2.getDate()+' '+MONTHS_S[d2.getMonth()]+' '+d2.getFullYear();
-  var tS=0,tJ=0,tC=0;
-  filtered.forEach(function(d){tS+=d.totalSales;tJ+=d.totalJobs;tC+=d.customers;});
-  var avgC=tC>0?'$'+(tS/tC).toFixed(2):'—';
-  if(!filtered.length){
-    setDetail('<div class="detail-panel"><div class="dp-hd dark"><div><div class="dp-title">'+title+'</div></div><button class="dp-close" onclick="closeDetail()">✕ Close</button></div><div class="dp-body"><div class="no-data-msg">No sales in this range.</div></div></div>');
-    return;
-  }
-  var rows=filtered.map(function(d){
-    var dt=new Date(d.date+'T12:00:00');
-    var h=heat(d.date,d.totalSales);
-    var pc=d.customers>0?'$'+(d.totalSales/d.customers).toFixed(2):'—';
-    return '<tr class="range-day-row" onclick="selected=\''+d.date+'\';showDayPanel(\''+d.date+'\')">'+
-      '<td><span class="dot" style="background:'+dotColor(h)+'"></span><strong>'+DAYS_S[dt.getDay()]+'</strong> '+dt.getDate()+' '+MONTHS_S[dt.getMonth()]+'</td>'+
-      '<td>'+fmt(d.totalSales)+'</td><td>'+d.totalJobs+'</td><td>'+d.customers+'</td><td>'+pc+'</td></tr>';
-  }).join('');
-  setDetail('<div class="detail-panel">'+
-    '<div class="dp-hd dark"><div><div class="dp-title">'+title+' <span style="font-size:13px;opacity:0.6">('+filtered.length+' days)</span></div>'+
-      '<div class="dp-stats">'+
-        '<div class="dp-stat"><div class="ds-l">Total Sales</div><div class="ds-v">'+fmt(tS)+'</div></div>'+
-        '<div class="dp-stat"><div class="ds-l">Jobs</div><div class="ds-v">'+tJ+'</div></div>'+
-        '<div class="dp-stat"><div class="ds-l">Customers</div><div class="ds-v">'+tC+'</div></div>'+
-        '<div class="dp-stat"><div class="ds-l">$/Cust</div><div class="ds-v">'+avgC+'</div></div>'+
-      '</div></div>'+
-      '<button class="dp-close" onclick="closeDetail()">✕ Close</button>'+
-    '</div>'+
-    '<div class="dp-body"><table class="dp-tbl"><thead><tr><th>Date</th><th>Sales</th><th>Jobs</th><th>Customers</th><th>$/Cust</th></tr></thead>'+
-    '<tbody>'+rows+'</tbody>'+
-    '<tfoot><tr><td>Total ('+filtered.length+' days)</td><td>'+fmt(tS)+'</td><td>'+tJ+'</td><td>'+tC+'</td><td>'+avgC+'</td></tr></tfoot>'+
-    '</table></div></div>');
-}
-
-function setDetail(html){
-  var el=document.getElementById('detail');
-  el.innerHTML=html;
-  el.scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-
-function clearDetail(){
-  document.getElementById('detail').innerHTML='';
-  selected=null;
-}
-
-function closeDetail(){
-  selected=null; rStart=null; rEnd=null;
-  clearDetail();
-  document.getElementById('range-lbl').classList.remove('show');
-  document.getElementById('clear-btn').classList.remove('show');
-  if(rangeMode) document.getElementById('range-hint').style.display='inline';
-  render();
-}
-
-// ── MERGED ONLOAD ──
-window.onload = function() {
-  var today = new Date().toISOString().split('T')[0];
-  var dateEl = document.getElementById('sales-date');
-  if (dateEl) dateEl.value = today;
-  updateDayLabel();
-  buildDeptRows();
-  checkSetupWarn();
-  setScriptCode();
-  var urlInp = document.getElementById('url-inp');
-  if (urlInp && scriptUrl) urlInp.value = scriptUrl;
-  var gInp = document.getElementById('gemini-inp');
-  if (gInp && geminiKey) gInp.value = geminiKey;
-  showConnStatus();
-  showGeminiStatus();
-  salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
-  lookup = buildLookup();
-};
 </script>
 </body>
 </html>

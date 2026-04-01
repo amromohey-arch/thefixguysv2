@@ -968,6 +968,7 @@ window.onload = function() {
   checkSetupWarn();
   setScriptCode();
   
+  // These lines ensure the settings boxes show your URL/Key
   var urlInp = document.getElementById('url-inp');
   if (urlInp && scriptUrl) urlInp.value = scriptUrl;
   
@@ -977,9 +978,12 @@ window.onload = function() {
   showConnStatus();
   showGeminiStatus();
   
+  // IMPORTANT: Load and show the calendar immediately
   salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
   lookup = buildLookup();
-  render();
+  render(); // This draws the calendar on the screen
+  
+  // Then try to sync with Google
   fetchFromSheets();
 };
 

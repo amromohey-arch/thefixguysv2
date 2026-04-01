@@ -818,10 +818,12 @@ function collectData() {
   var cats = {};
   
   DEPTS.forEach(function(dept) {
+    var jEl = document.getElementById('j_' + dept.code);
+    var sEl = document.getElementById('s_' + dept.code);
     cats[dept.code] = {
       name: dept.name,
-      jobs: parseInt(document.getElementById('j_' + dept.code).value) || 0,
-      sales: parseFloat(document.getElementById('s_' + dept.code).value) || 0
+      jobs: jEl ? (parseInt(jEl.value) || 0) : 0,
+      sales: sEl ? (parseFloat(sEl.value) || 0) : 0
     };
   });
   
@@ -854,12 +856,12 @@ function submitSales() {
   salesData.push(data);
   salesData.sort(function(a, b) { return a.date.localeCompare(b.date); });
   localStorage.setItem('tfg_data', JSON.stringify(salesData));
+  lookup = buildLookup(); 
   
   if (scriptUrl) {
     Promise.all([
       fetch(scriptUrl, {
         method: 'POST',
-        // Changed to text/plain to bypass strict CORS preflight checks
         headers: {'Content-Type': 'text/plain;charset=utf-8'},
         body: JSON.stringify({type: 'sales', data: data})
       }),
@@ -874,10 +876,9 @@ function submitSales() {
         })
       }) : Promise.resolve()
     ])
-    .then(function(responses) { 
-      // Ensure the fetch actually returned a 200 OK
-      if (responses[0] && !responses[0].ok) throw new Error('Network response was not ok');
+    .then(function() { 
       showSuccess('Saved and synced to Google Sheets.'); 
+      fetchFromSheets(); 
     })
     .catch(function(err) { 
       console.error('Sync Error:', err);
@@ -902,8 +903,10 @@ function resetForm() {
   btn.innerHTML = 'Submit Sales Data';
   
   DEPTS.forEach(function(dept) {
-    document.getElementById('j_' + dept.code).value = '';
-    document.getElementById('s_' + dept.code).value = '';
+    var jEl = document.getElementById('j_' + dept.code);
+    var sEl = document.getElementById('s_' + dept.code);
+    if (jEl) jEl.value = '';
+    if (sEl) sEl.value = '';
   });
   
   document.querySelectorAll('.n-inp,.d-inp,.cash-inp,.cust-inp').forEach(function(el) {
@@ -911,7 +914,8 @@ function resetForm() {
   });
   
   ['customers', 'cash', 'eftpos', 'notes'].forEach(function(id) {
-    document.getElementById(id).value = '';
+    var el = document.getElementById(id);
+    if (el) el.value = '';
   });
   
   receiptB64 = null;
@@ -921,802 +925,44 @@ function resetForm() {
   document.getElementById('btn-scan').classList.remove('show');
   document.getElementById('scan-result').classList.remove('show');
   document.getElementById('receipt-file').value = '';
-  var gf = document.getElementById('receipt-file-gallery');
-  if (gf) gf.value = '';
   
   updateTotals();
   updateDiff();
   
-  var d = new Date(document.getElementById('sales-date').value + 'T12:00:00');
+  var currentVal = document.getElementById('sales-date').value;
+  var d = new Date(currentVal + 'T12:00:00');
   d.setDate(d.getDate() + 1);
   document.getElementById('sales-date').value = d.toISOString().split('T')[0];
   updateDayLabel();
+  render(); 
 }
-
-// ── SETUP ──────────────────────────────────────────────────────────────────
-function checkSetupWarn() {
-  document.getElementById('setup-warn').style.display = scriptUrl ? 'none' : 'block';
-}
-
-function saveUrl() {
-  var val = document.getElementById('url-inp').value.trim();
-  if (!val) {
-    alert('Paste your Apps Script URL first.');
-    return;
-  }
-  scriptUrl = val;
-  localStorage.setItem('tfg_url', val);
-  var m = document.getElementById('saved-lbl');
-  m.style.display = 'inline';
-  setTimeout(function() { m.style.display = 'none'; }, 2500);
-  checkSetupWarn();
-  showConnStatus();
-}
-
-function saveGeminiKey() {
-  var val = document.getElementById('gemini-inp').value.trim();
-  if (!val) {
-    alert('Paste your Gemini key first.');
-    return;
-  }
-  geminiKey = val;
-  localStorage.setItem('tfg_gemini', val);
-  var m = document.getElementById('gemini-saved-lbl');
-  m.style.display = 'inline';
-  setTimeout(function() { m.style.display = 'none'; }, 2500);
-  showGeminiStatus();
-}
-
-function showConnStatus() {
-  var el = document.getElementById('conn-status');
-  if (!el) return;
-  el.innerHTML = scriptUrl
-    ? '<div class="conn-ok">✓ Connected to Google Sheets.</div>'
-    : '<div class="conn-warn">⚠️ Not connected. Paste your URL above.</div>';
-}
-
-function showGeminiStatus() {
-  var el = document.getElementById('gemini-status');
-  if (!el) return;
-  el.innerHTML = geminiKey
-    ? '<div class="conn-ok">✓ Google AI connected — scanner ready.</div>'
-    : '<div class="conn-warn">⚠️ No key. Get one at aistudio.google.com/apikey</div>';
-}
-
-function copyScript() {
-  navigator.clipboard.writeText(document.getElementById('script-code').textContent)
-    .then(function() { alert('Copied! Paste into Apps Script editor.'); });
-}
-
-function setScriptCode() {
-  document.getElementById('script-code').textContent = 
-'// ═══════════════════════════════════════════════════\n' +
-'// TFG Sales App — Apps Script v2.8\n' +
-'// Keys: date, totalJobs, totalSales, cash, eftpos,\n' +
-'//       customers, notes, departments\n' +
-'// Date format: YYYY-MM-DD (forced, no exceptions)\n' +
-'// ═══════════════════════════════════════════════════\n\n' +
-'// ── Utility: force date to YYYY-MM-DD string ──────\n' +
-'function toYMD(val) {\n' +
-'  if (!val) return \'\';\n' +
-'  if (val instanceof Date) {\n' +
-'    var y = val.getFullYear();\n' +
-'    var m = String(val.getMonth() + 1).padStart(2, \'0\');\n' +
-'    var d = String(val.getDate()).padStart(2, \'0\');\n' +
-'    return y + \'-\' + m + \'-\' + d;\n' +
-'  }\n' +
-'  // Already a string — extract YYYY-MM-DD if present\n' +
-'  var s = String(val);\n' +
-'  var match = s.match(/(\\d{4})-(\\d{2})-(\\d{2})/);\n' +
-'  return match ? match[0] : s.trim();\n' +
-'}\n\n' +
-'// ── doGet: returns all sales rows for cross-device sync ──\n' +
-'function doGet(e) {\n' +
-'  try {\n' +
-'    var ss    = SpreadsheetApp.getActiveSpreadsheet();\n' +
-'    var sheet = ss.getSheetByName(\'Sales\');\n\n' +
-'    if (!sheet) {\n' +
-'      return ContentService\n' +
-'        .createTextOutput(JSON.stringify({ error: \'Sheet Sales not found\' }))\n' +
-'        .setMimeType(ContentService.MimeType.JSON);\n' +
-'    }\n\n' +
-'    var lastRow = sheet.getLastRow();\n' +
-'    if (lastRow < 2) {\n' +
-'      return ContentService\n' +
-'        .createTextOutput(JSON.stringify({ status: \'ok\', rows: [] }))\n' +
-'        .setMimeType(ContentService.MimeType.JSON);\n' +
-'    }\n\n' +
-'    var data    = sheet.getDataRange().getValues();\n' +
-'    var headers = data[0].map(function(h) { return String(h).trim(); });\n\n' +
-'    var DEPT_NAMES = {\n' +
-'      D01:\'Batteries\', D02:\'Watch Bands\', D03:\'Transponders\', D04:\'Remotes\',\n' +
-'      D05:\'Glue\', D06:\'House Keys\', D07:\'Heels & Soles\', D08:\'Patching\',\n' +
-'      D09:\'Giftware\', D10:\'Engraving\', D11:\'Shoecare\', D12:\'Shell\',\n' +
-'      D13:\'Sharpening\', D14:\'Watch Repairs\', D15:\'Miscellaneous\',\n' +
-'      D16:\'Stitching\', D17:\'Stitch\'\n' +
-'    };\n' +
-'    var CODES = [\'D01\',\'D02\',\'D03\',\'D04\',\'D05\',\'D06\',\'D07\',\'D08\',\'D09\',\n' +
-'                 \'D10\',\'D11\',\'D12\',\'D13\',\'D14\',\'D15\',\'D16\',\'D17\'];\n\n' +
-'    // Build column index map once\n' +
-'    var idx = {};\n' +
-'    headers.forEach(function(h, i) { idx[h] = i; });\n\n' +
-'    var rows = [];\n' +
-'    for (var i = 1; i < data.length; i++) {\n' +
-'      var row = data[i];\n' +
-'      if (!row[0]) continue; // skip blank rows\n\n' +
-'      var dateStr = toYMD(row[0]);\n' +
-'      if (!dateStr || !dateStr.match(/^\\d{4}-\\d{2}-\\d{2}$/)) continue;\n\n' +
-'      var departments = {};\n' +
-'      CODES.forEach(function(code) {\n' +
-'        var jIdx = idx[code + \' Jobs\'];\n' +
-'        var sIdx = idx[code + \' $\'];\n' +
-'        var jobs  = jIdx !== undefined ? (parseFloat(row[jIdx])  || 0) : 0;\n' +
-'        var sales = sIdx !== undefined ? (parseFloat(row[sIdx]) || 0) : 0;\n' +
-'        if (jobs > 0 || sales > 0) {\n' +
-'          departments[code] = {\n' +
-'            name:  DEPT_NAMES[code] || code,\n' +
-'            jobs:  jobs,\n' +
-'            sales: sales\n' +
-'          };\n' +
-'        }\n' +
-'      });\n\n' +
-'      rows.push({\n' +
-'        date:       dateStr,\n' +
-'        customers:  parseFloat(idx[\'Customers\']  !== undefined ? row[idx[\'Customers\']]  : 0) || 0,\n' +
-'        totalJobs:  parseFloat(idx[\'Total Jobs\']  !== undefined ? row[idx[\'Total Jobs\']]  : 0) || 0,\n' +
-'        totalSales: parseFloat(idx[\'Total Sales\'] !== undefined ? row[idx[\'Total Sales\']] : 0) || 0,\n' +
-'        cash:       parseFloat(idx[\'Cash\']        !== undefined ? row[idx[\'Cash\']]        : 0) || 0,\n' +
-'        eftpos:     parseFloat(idx[\'EFTPOS\']       !== undefined ? row[idx[\'EFTPOS\']]       : 0) || 0,\n' +
-'        notes:      idx[\'Notes\'] !== undefined ? String(row[idx[\'Notes\']] || \'\') : \'\',\n' +
-'        departments: departments\n' +
-'      });\n' +
-'    }\n\n' +
-'    return ContentService\n' +
-'      .createTextOutput(JSON.stringify({ status: \'ok\', rows: rows }))\n' +
-'      .setMimeType(ContentService.MimeType.JSON);\n\n' +
-'  } catch(err) {\n' +
-'    return ContentService\n' +
-'      .createTextOutput(JSON.stringify({ status: \'error\', msg: err.toString() }))\n' +
-'      .setMimeType(ContentService.MimeType.JSON);\n' +
-'  }\n' +
-'}\n\n' +
-'// ── doPost: saves sales data + receipt image ──────\n' +
-'function doPost(e) {\n' +
-'  try {\n' +
-'    var payload = JSON.parse(e.postData.contents);\n\n' +
-'    // ── Receipt image → Google Drive ──────────────\n' +
-'    if (payload.type === \'image\') {\n' +
-'      var folders = DriveApp.getFoldersByName(\'TFG Daily Receipts\');\n' +
-'      var folder  = folders.hasNext()\n' +
-'                  ? folders.next()\n' +
-'                  : DriveApp.createFolder(\'TFG Daily Receipts\');\n' +
-'      var bytes  = Utilities.base64Decode(payload.imageData);\n' +
-'      var blob   = Utilities.newBlob(bytes, \'image/jpeg\', payload.filename || \'receipt.jpg\');\n' +
-'      folder.createFile(blob);\n' +
-'      return ContentService\n' +
-'        .createTextOutput(JSON.stringify({ status: \'ok\', type: \'image\' }))\n' +
-'        .setMimeType(ContentService.MimeType.JSON);\n' +
-'    }\n\n' +
-'    // ── Sales data → Google Sheets ────────────────\n' +
-'    var data  = payload.data || payload;\n' +
-'    var ss    = SpreadsheetApp.getActiveSpreadsheet();\n' +
-'    var sheet = ss.getSheetByName(\'Sales\') || ss.insertSheet(\'Sales\');\n\n' +
-'    var CODES = [\'D01\',\'D02\',\'D03\',\'D04\',\'D05\',\'D06\',\'D07\',\'D08\',\'D09\',\n' +
-'                 \'D10\',\'D11\',\'D12\',\'D13\',\'D14\',\'D15\',\'D16\',\'D17\'];\n' +
-'    var depts = data.departments || {};\n\n' +
-'    // Write header row if sheet is empty\n' +
-'    if (sheet.getLastRow() === 0) {\n' +
-'      var h = [\'Date\',\'Day\',\'Customers\',\'Total Jobs\',\'Total Sales\',\n' +
-'               \'Cash\',\'EFTPOS\',\'Notes\',\'Submitted\'];\n' +
-'      CODES.forEach(function(c) { h.push(c + \' Jobs\'); h.push(c + \' $\'); });\n' +
-'      sheet.appendRow(h);\n' +
-'    }\n\n' +
-'    // Force date to YYYY-MM-DD\n' +
-'    var dateStr = toYMD(data.date || \'\');\n' +
-'    if (!dateStr) throw new Error(\'Invalid date: \' + data.date);\n\n' +
-'    var d  = new Date(dateStr + \'T12:00:00\');\n' +
-'    var DN = [\'Sun\',\'Mon\',\'Tue\',\'Wed\',\'Thu\',\'Fri\',\'Sat\'];\n\n' +
-'    var row = [\n' +
-'      dateStr,\n' +
-'      DN[d.getDay()],\n' +
-'      data.customers  || 0,\n' +
-'      data.totalJobs  || 0,\n' +
-'      data.totalSales || 0,\n' +
-'      data.cash       || 0,\n' +
-'      data.eftpos     || 0,\n' +
-'      data.notes      || \'\',\n' +
-'      data.submittedAt || \'\'\n' +
-'    ];\n' +
-'    CODES.forEach(function(c) {\n' +
-'      var dept = depts[c] || {};\n' +
-'      row.push(dept.jobs  || 0);\n' +
-'      row.push(dept.sales || 0);\n' +
-'    });\n\n' +
-'    // Update existing row if same date, otherwise append\n' +
-'    var existingRow = -1;\n' +
-'    var lastRow = sheet.getLastRow();\n' +
-'    if (lastRow > 1) {\n' +
-'      var dates = sheet.getRange(2, 1, lastRow - 1, 1).getValues();\n' +
-'      for (var i = 0; i < dates.length; i++) {\n' +
-'        if (toYMD(dates[i][0]) === dateStr) {\n' +
-'          existingRow = i + 2;\n' +
-'          break;\n' +
-'        }\n' +
-'      }\n' +
-'    }\n\n' +
-'    if (existingRow > 0) {\n' +
-'      sheet.getRange(existingRow, 1, 1, row.length).setValues([row]);\n' +
-'    } else {\n' +
-'      sheet.appendRow(row);\n' +
-'    }\n\n' +
-'    return ContentService\n' +
-'      .createTextOutput(JSON.stringify({ status: \'ok\', type: \'sales\' }))\n' +
-'      .setMimeType(ContentService.MimeType.JSON);\n\n' +
-'  } catch(err) {\n' +
-'    return ContentService\n' +
-'      .createTextOutput(JSON.stringify({ status: \'error\', msg: err.toString() }))\n' +
-'      .setMimeType(ContentService.MimeType.JSON);\n' +
-'  }\n' +
-'}\n\n' +
-'// ── Run ONCE to save Gemini key securely ─────────\n' +
-'function setGeminiKey() {\n' +
-'  PropertiesService.getScriptProperties()\n' +
-'    .setProperty(\'GEMINI_KEY\', \'PASTE_YOUR_KEY_HERE\');\n' +
-'  Logger.log(\'Gemini key saved.\');\n' +
-'}\n';
-}
-
-// ── SYNC ───────────────────────────────────────────────────────────────────
-function setBanner(type, msg) {
-  var banner = document.getElementById('sync-banner');
-  var icon = document.getElementById('sync-icon');
-  var text = document.getElementById('sync-text');
-  if (!banner) return;
-  
-  if (type === 'syncing') {
-    banner.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:var(--r);margin-bottom:14px;font-size:13px;font-weight:600;font-family:var(--fb);background:#f8f7f7;border:1.5px solid #e6e6e6;color:#4d4d4d;transition:all 0.3s';
-    icon.textContent = '⏳';
-    text.textContent = msg || 'Syncing from Google Sheets...';
-  } else if (type === 'synced') {
-    banner.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:var(--r);margin-bottom:14px;font-size:13px;font-weight:600;font-family:var(--fb);background:#dcfce7;border:1.5px solid #86efac;color:#16a34a;transition:all 0.3s';
-    icon.textContent = '✅';
-    text.textContent = msg || 'Synced with Google Sheets';
-  } else if (type === 'local') {
-    banner.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:var(--r);margin-bottom:14px;font-size:13px;font-weight:600;font-family:var(--fb);background:#fef9c3;border:1.5px solid #fde047;color:#92400e;transition:all 0.3s';
-    icon.textContent = '⚠️';
-    text.textContent = msg || 'Showing local data only — connect Google Sheets in Setup to sync across devices';
-  } else if (type === 'error') {
-    banner.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:var(--r);margin-bottom:14px;font-size:13px;font-weight:600;font-family:var(--fb);background:#fef2f2;border:1.5px solid #fca5a5;color:#7d0303;transition:all 0.3s';
-    icon.textContent = '🔴';
-    text.textContent = msg || 'Could not sync — showing last saved data';
-  }
-}
-
-function syncFromSheets() {
-  var url = localStorage.getItem('tfg_url') || '';
-  if (!url) {
-    setBanner('local', 'No Google Sheets connection — go to Daily Entry → Setup to connect');
-    return;
-  }
-  
-  setBanner('syncing', 'Pulling latest data from Google Sheets...');
-  
-  fetch(url + '?type=all_sales', {method: 'GET', redirect: 'follow'})
-    .then(function(r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(function(resp) {
-      if (resp.error) throw new Error(resp.error);
-      if (resp.status !== 'ok') throw new Error('Unexpected response from server');
-      
-      var rows = resp.rows || [];
-      if (rows.length === 0) {
-        setBanner('local', 'Google Sheets is empty — submit your first day to start syncing');
-        return;
-      }
-      
-      var sheetsMap = {};
-      rows.forEach(function(r) {
-        var d = String(r.date || '').trim();
-        if (!d.match(/^\d{4}-\d{2}-\d{2}$/)) return;
-        
-        sheetsMap[d] = {
-          date: d,
-          customers: parseFloat(r.customers) || 0,
-          totalJobs: parseFloat(r.totalJobs) || 0,
-          totalSales: parseFloat(r.totalSales) || 0,
-          cash: parseFloat(r.cash) || 0,
-          eftpos: parseFloat(r.eftpos) || 0,
-          notes: r.notes || '',
-          departments: r.departments || {}
-        };
-      });
-      
-      var local = JSON.parse(localStorage.getItem('tfg_data') || '[]');
-      local.forEach(function(r) {
-        if (r.date && !sheetsMap[r.date]) sheetsMap[r.date] = r;
-      });
-      
-      salesData = Object.values(sheetsMap).sort(function(a, b) {
-        return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
-      });
-      
-      lookup = buildLookup();
-      localStorage.setItem('tfg_data', JSON.stringify(salesData));
-      render();
-      
-      var now = new Date();
-      var time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
-      setBanner('synced', '✓ Synced — ' + salesData.length + ' days loaded from Google Sheets — ' + time);
-    })
-    .catch(function(err) {
-      salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
-      lookup = buildLookup();
-      render();
-      setBanner('error', 'Could not sync with Google Sheets — showing ' + salesData.length + 
-        ' days of local data. Error: ' + err.message);
-    });
-}
-
-// ── VIEW SWITCHING ─────────────────────────────────────────────────────────
-function setView(name) {
-  curView = name;
-  ['month', 'week', 'year'].forEach(function(v) {
-    var el = document.getElementById('view-' + v);
-    if (el) el.style.display = v === name ? 'block' : 'none';
-    var btn = document.getElementById('vt-' + v);
-    if (btn) btn.className = v === name ? 'vt-btn active' : 'vt-btn';
-  });
-  document.getElementById('range-bar').style.display = name === 'week' ? 'none' : 'flex';
-  render();
-}
-
-function render() {
-  if (curView === 'month') renderMonth();
-  if (curView === 'week') renderWeek();
-  if (curView === 'year') renderYear();
-}
-
-function goToday() {
-  var n = new Date();
-  curYear = n.getFullYear();
-  curMonth = n.getMonth();
-  curWeekMon = weekMonday(n);
-  clearRange();
-  clearDetail();
-  render();
-}
-
-// ── MONTH VIEW ─────────────────────────────────────────────────────────────
-function changeMonth(dir) {
-  curMonth += dir;
-  if (curMonth < 0) { curMonth = 11; curYear--; }
-  if (curMonth > 11) { curMonth = 0; curYear++; }
-  clearRange();
-  clearDetail();
-  render();
-}
-
-function renderMonth() {
-  var el = document.getElementById('month-title');
-  if (el) el.textContent = MONTHS[curMonth] + ' ' + curYear;
-  
-  var today = new Date().toISOString().split('T')[0];
-  var firstDow = new Date(curYear, curMonth, 1).getDay();
-  var offset = (firstDow + 6) % 7;
-  var dim = new Date(curYear, curMonth + 1, 0).getDate();
-  
-  var html = '';
-  for (var i = 0; i < offset; i++) {
-    html += '<div class="m-day m-empty"></div>';
-  }
-  
-  for (var day = 1; day <= dim; day++) {
-    var ds = isoDate(curYear, curMonth, day);
-    var rec = lookup[ds];
-    var h = rec ? heat(ds, rec.totalSales) : '';
-    var cls = 'm-day' + (h ? ' h-' + h : '') + (ds === today ? ' today' : '');
-    
-    if (rangeMode) {
-      if (ds === rStart || ds === rEnd) cls += ' m-rng-se';
-      else if (rStart && rEnd && ds > rStart && ds < rEnd) cls += ' m-in-rng';
-      else if (rStart && !rEnd && ds === rStart) cls += ' m-rng-se';
-    } else if (ds === selected) {
-      cls += ' m-sel';
-    }
-    
-    var slbl = rec ? (rec.totalSales >= 1000 ? '$' + (rec.totalSales / 1000).toFixed(1) + 'k' : '$' + rec.totalSales.toFixed(0)) : '';
-    
-    html += '<div class="' + cls + '" data-ds="' + ds + '">' +
-      '<div class="m-num">' + day + '</div>' +
-      (slbl ? '<div class="m-sales">' + slbl + '</div>' : '') +
-      (rec ? '<div class="m-jobs">' + rec.totalJobs + ' jobs</div>' : '') +
-      '</div>';
-  }
-  
-  var grid = document.getElementById('month-days');
-  if (grid) grid.innerHTML = html;
-}
-
-// ── WEEK VIEW ──────────────────────────────────────────────────────────────
-function changeWeek(dir) {
-  curWeekMon = addDays(curWeekMon, dir * 7);
-  clearDetail();
-  render();
-}
-
-function renderWeek() {
-  var mon = curWeekMon;
-  var sun = addDays(mon, 6);
-  var el = document.getElementById('week-title');
-  if (el) {
-    el.textContent = 'Week: ' + mon.getDate() + ' ' + MONTHS_S[mon.getMonth()] + ' - ' + 
-      sun.getDate() + ' ' + MONTHS_S[sun.getMonth()] + ' ' + sun.getFullYear();
-  }
-  
-  var tS = 0, tJ = 0, tC = 0;
-  var rows = '';
-  
-  for (var i = 0; i < 7; i++) {
-    var d = addDays(mon, i);
-    var ds = d.toISOString().split('T')[0];
-    var rec = lookup[ds];
-    var h = rec ? heat(ds, rec.totalSales) : '';
-    var dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:' + dotColor(h) + '"></span>';
-    var pc = (rec && rec.customers > 0) ? '$' + (rec.totalSales / rec.customers).toFixed(2) : '--';
-    
-    if (rec) {
-      tS += rec.totalSales;
-      tJ += rec.totalJobs;
-      tC += rec.customers;
-    }
-    
-    rows += '<tr onclick="' + (rec ? "dayClick('" + ds + "')" : '') + '">' +
-      '<td>' + dot + '<strong>' + DAYS_S[d.getDay()] + '</strong> ' + d.getDate() + ' ' + MONTHS_S[d.getMonth()] + '</td>' +
-      '<td>' + (rec ? '<span style="background:#dcfce7;color:#16a34a;padding:2px 7px;border-radius:100px;font-size:10px;font-weight:700">Yes</span>' : '<span style="color:#aaa;font-size:11px">--</span>') + '</td>' +
-      '<td>' + (rec ? rec.customers : '--') + '</td>' +
-      '<td>' + (rec ? fmt(rec.totalSales) : '--') + '</td>' +
-      '<td>' + pc + '</td>' +
-      '<td>' + (rec ? rec.totalJobs : '--') + '</td></tr>';
-  }
-  
-  var avgC = tC > 0 ? '$' + (tS / tC).toFixed(2) : '--';
-  var tbl = document.getElementById('week-tbl');
-  if (tbl) {
-    tbl.innerHTML = '<thead><tr><th>Date</th><th>Status</th><th>Customers</th><th>Sales</th><th>$/Cust</th><th>Jobs</th></tr></thead>' +
-      '<tbody>' + rows + '</tbody>' +
-      '<tfoot><tr><td colspan="2">TOTAL</td><td>' + tC + '</td><td>' + fmt(tS) + '</td><td>' + avgC + '</td><td>' + tJ + '</td></tr></tfoot>';
-  }
-}
-
-// ── YEAR VIEW ──────────────────────────────────────────────────────────────
-function changeYear(dir) {
-  curYear += dir;
-  clearRange();
-  clearDetail();
-  render();
-}
-
-function renderYear() {
-  var el = document.getElementById('year-title');
-  if (el) el.textContent = curYear;
-  
-  var today = new Date().toISOString().split('T')[0];
-  var html = '';
-  
-  for (var m = 0; m < 12; m++) {
-    var dim = new Date(curYear, m + 1, 0).getDate();
-    var firstDow = new Date(curYear, m, 1).getDay();
-    var offset = (firstDow + 6) % 7;
-    var monTotal = 0;
-    
-    for (var d2 = 1; d2 <= dim; d2++) {
-      var r = lookup[isoDate(curYear, m, d2)];
-      if (r) monTotal += r.totalSales;
-    }
-    
-    var totStr = monTotal > 0 ? '$' + (monTotal / 1000).toFixed(1) + 'k' : '';
-    
-    html += '<div class="y-mon">' +
-      '<div class="y-mon-hd">' +
-        '<span class="y-mon-name">' + MONTHS[m] + '</span>' +
-        '<span class="y-mon-total">' + totStr + '</span>' +
-      '</div>' +
-      '<div class="y-dow-row">' +
-        ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(function(l) { return '<div class="y-dow">' + l + '</div>'; }).join('') +
-      '</div>' +
-      '<div class="y-days">';
-    
-    for (var i = 0; i < offset; i++) {
-      html += '<div class="y-day y-empty"></div>';
-    }
-    
-    for (var day = 1; day <= dim; day++) {
-      var ds = isoDate(curYear, m, day);
-      var rec = lookup[ds];
-      var h = rec ? heat(ds, rec.totalSales) : '';
-      var cls = 'y-day' + (h ? ' yh-' + h : ' y-no-data');
-      
-      if (rangeMode) {
-        if (ds === rStart || ds === rEnd) cls += ' y-rng-se';
-        else if (rStart && rEnd && ds > rStart && ds < rEnd) cls += ' y-in-rng';
-        else if (rStart && !rEnd && ds === rStart) cls += ' y-rng-se';
-      } else if (ds === selected) {
-        cls += ' y-sel';
-      }
-      
-      var amt = rec ? (rec.totalSales >= 1000 ? '$' + (rec.totalSales / 1000).toFixed(1) + 'k' : '$' + rec.totalSales.toFixed(0)) : '';
-      
-      html += '<div class="' + cls + '" onclick="dayClick(\'' + ds + '\')" title="' + ds + (rec ? ' -- $' + rec.totalSales.toFixed(2) : '') + '">' +
-        '<div class="y-num">' + day + '</div>' +
-        (amt ? '<div class="y-amt">' + amt + '</div>' : '') +
-        '</div>';
-    }
-    
-    html += '</div></div>';
-  }
-  
-  var grid = document.getElementById('year-grid');
-  if (grid) grid.innerHTML = html;
-}
-
-// ── RANGE ──────────────────────────────────────────────────────────────────
-function toggleRange() {
-  rangeMode = !rangeMode;
-  rStart = null;
-  rEnd = null;
-  selected = null;
-  
-  var btn = document.getElementById('range-btn');
-  if (btn) {
-    btn.innerHTML = '<div class="r-dot" style="width:8px;height:8px;border-radius:50%;background:' + 
-      (rangeMode ? '#e31211' : '#e6e6e6') + '"></div>' + (rangeMode ? 'Range ON' : 'Select date range');
-    btn.style.borderColor = rangeMode ? '#e31211' : '#e6e6e6';
-    btn.style.color = rangeMode ? '#7d0303' : '#4d4d4d';
-  }
-  
-  var hint = document.getElementById('range-hint');
-  if (hint) hint.style.display = rangeMode ? 'inline' : 'none';
-  
-  clearDetail();
-  render();
-}
-
-function clearRange() {
-  rStart = null;
-  rEnd = null;
-  
-  var rl = document.getElementById('range-lbl');
-  if (rl) {
-    rl.textContent = '';
-    rl.style.display = 'none';
-  }
-  
-  var cb = document.getElementById('clear-btn');
-  if (cb) cb.style.display = 'none';
-  
-  var hint = document.getElementById('range-hint');
-  if (hint) hint.style.display = rangeMode ? 'inline' : 'none';
-  
-  clearDetail();
-  render();
-}
-
-function updateRangeLbl() {
-  var d1 = new Date(rStart + 'T12:00:00');
-  var lbl = DAYS_S[d1.getDay()] + ' ' + d1.getDate() + ' ' + MONTHS_S[d1.getMonth()];
-  
-  if (rEnd) {
-    var d2 = new Date(rEnd + 'T12:00:00');
-    lbl += ' to ' + DAYS_S[d2.getDay()] + ' ' + d2.getDate() + ' ' + MONTHS_S[d2.getMonth()];
-  }
-  
-  var rl = document.getElementById('range-lbl');
-  if (rl) {
-    rl.textContent = lbl;
-    rl.style.display = 'block';
-    rl.style.background = '#f5efef';
-    rl.style.border = '1.5px solid #e31211';
-    rl.style.borderRadius = '10px';
-    rl.style.padding = '5px 10px';
-    rl.style.fontSize = '11px';
-    rl.style.fontWeight = '700';
-    rl.style.color = '#7d0303';
-  }
-}
-
-// ── DAY CLICK ──────────────────────────────────────────────────────────────
-function dayClick(ds) {
-  if (rangeMode) {
-    if (!rStart || (rStart && rEnd)) {
-      rStart = ds;
-      rEnd = null;
-      clearDetail();
-      updateRangeLbl();
-    } else {
-      if (ds < rStart) {
-        rEnd = rStart;
-        rStart = ds;
-      } else {
-        rEnd = ds;
-      }
-      var cb = document.getElementById('clear-btn');
-      if (cb) cb.style.display = 'block';
-      updateRangeLbl();
-      showRangePanel();
-    }
-    render();
-  } else {
-    if (selected === ds) {
-      selected = null;
-      clearDetail();
-    } else {
-      selected = ds;
-      showDayPanel(ds);
-    }
-    render();
-  }
-}
-
-// ── DAY PANEL ──────────────────────────────────────────────────────────────
-function showDayPanel(ds) {
-  var rec = lookup[ds];
-  var dt = new Date(ds + 'T12:00:00');
-  var title = DAYS_F[dt.getDay()] + ' ' + dt.getDate() + ' ' + MONTHS[dt.getMonth()] + ' ' + dt.getFullYear();
-  var h = rec ? heat(ds, rec.totalSales) : '';
-  
-  if (!rec) {
-    setDetail('<div class="detail-panel"><div class="dp-hd dark"><div><div class="dp-title">' + title + '</div></div>' +
-      '<button class="dp-close" onclick="closeDetail()">X Close</button></div>' +
-      '<div class="dp-body"><div class="no-data-msg">No sales entered for this day.</div></div></div>');
-    return;
-  }
-  
-  var perC = rec.customers > 0 ? '$' + (rec.totalSales / rec.customers).toFixed(2) : '--';
-  var dot = '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:' + dotColor(h) + '"></span>';
-  
-  var catRows = '';
-  var depts = rec.departments || {};
-  Object.keys(depts).forEach(function(code) {
-    var d = depts[code];
-    if (d && (d.jobs > 0 || d.sales > 0)) {
-      catRows += '<tr><td><strong>' + code + '</strong></td><td>' + (d.name || code) + '</td>' +
-        '<td>' + d.jobs + '</td><td>' + fmt(d.sales) + '</td></tr>';
-    }
-  });
-  
-  setDetail('<div class="detail-panel"><div class="dp-hd red">' +
-    '<div><div class="dp-title">' + dot + title + '</div>' +
-    '<div class="dp-stats">' +
-      '<div class="dp-stat"><div class="ds-l">Sales</div><div class="ds-v">' + fmt(rec.totalSales) + '</div></div>' +
-      '<div class="dp-stat"><div class="ds-l">Jobs</div><div class="ds-v">' + rec.totalJobs + '</div></div>' +
-      '<div class="dp-stat"><div class="ds-l">Customers</div><div class="ds-v">' + rec.customers + '</div></div>' +
-      '<div class="dp-stat"><div class="ds-l">$/Cust</div><div class="ds-v">' + perC + '</div></div>' +
-    '</div></div>' +
-    '<button class="dp-close" onclick="closeDetail()">X Close</button></div>' +
-    '<div class="dp-body">' +
-    (catRows ? '<table class="dp-tbl"><thead><tr><th>Code</th><th>Department</th><th>Jobs</th><th>Sales</th></tr></thead>' +
-      '<tbody>' + catRows + '</tbody>' +
-      '<tfoot><tr><td colspan="2">Total</td><td>' + rec.totalJobs + '</td><td>' + fmt(rec.totalSales) + '</td></tr></tfoot></table>' 
-      : '<p style="font-size:13px;color:var(--gd)">No dept breakdown.</p>') +
-    '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--gm);font-size:12px;color:var(--gd)">' +
-      '<span>Cash: <strong>' + fmt(rec.cash || 0) + '</strong></span>' +
-      '<span>EFTPOS: <strong>' + fmt(rec.eftpos || 0) + '</strong></span>' +
-    '</div>' +
-    (rec.notes ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--gm);font-size:12px;color:var(--gd)"><strong>Notes:</strong> ' + rec.notes + '</div>' : '') +
-    '</div></div>');
-}
-
-// ── RANGE PANEL ────────────────────────────────────────────────────────────
-function showRangePanel() {
-  var filtered = salesData.filter(function(d) {
-    return d.date >= rStart && d.date <= rEnd;
-  }).sort(function(a, b) {
-    return a.date.localeCompare(b.date);
-  });
-  
-  var d1 = new Date(rStart + 'T12:00:00');
-  var d2 = new Date(rEnd + 'T12:00:00');
-  var title = DAYS_S[d1.getDay()] + ' ' + d1.getDate() + ' ' + MONTHS_S[d1.getMonth()] + ' to ' +
-    DAYS_S[d2.getDay()] + ' ' + d2.getDate() + ' ' + MONTHS_S[d2.getMonth()] + ' ' + d2.getFullYear();
-  
-  var tS = 0, tJ = 0, tC = 0;
-  filtered.forEach(function(d) {
-    tS += d.totalSales;
-    tJ += d.totalJobs;
-    tC += d.customers;
-  });
-  
-  var avgC = tC > 0 ? '$' + (tS / tC).toFixed(2) : '--';
-  
-  if (!filtered.length) {
-    setDetail('<div class="detail-panel"><div class="dp-hd dark"><div><div class="dp-title">' + title + '</div></div>' +
-      '<button class="dp-close" onclick="closeDetail()">X Close</button></div>' +
-      '<div class="dp-body"><div class="no-data-msg">No sales in this range.</div></div></div>');
-    return;
-  }
-  
-  var rows = filtered.map(function(d) {
-    var dt = new Date(d.date + 'T12:00:00');
-    var h = heat(d.date, d.totalSales);
-    var pc = d.customers > 0 ? '$' + (d.totalSales / d.customers).toFixed(2) : '--';
-    return '<tr onclick="selected=\'' + d.date + '\';showDayPanel(\'' + d.date + '\')">' +
-      '<td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:' + dotColor(h) + '"></span>' +
-      '<strong>' + DAYS_S[dt.getDay()] + '</strong> ' + dt.getDate() + ' ' + MONTHS_S[dt.getMonth()] + '</td>' +
-      '<td>' + fmt(d.totalSales) + '</td>' +
-      '<td>' + d.totalJobs + '</td>' +
-      '<td>' + d.customers + '</td>' +
-      '<td>' + pc + '</td></tr>';
-  }).join('');
-  
-  setDetail('<div class="detail-panel"><div class="dp-hd dark">' +
-    '<div><div class="dp-title">' + title + ' (' + filtered.length + ' days)</div>' +
-    '<div class="dp-stats">' +
-      '<div class="dp-stat"><div class="ds-l">Total Sales</div><div class="ds-v">' + fmt(tS) + '</div></div>' +
-      '<div class="dp-stat"><div class="ds-l">Jobs</div><div class="ds-v">' + tJ + '</div></div>' +
-      '<div class="dp-stat"><div class="ds-l">Customers</div><div class="ds-v">' + tC + '</div></div>' +
-      '<div class="dp-stat"><div class="ds-l">$/Cust</div><div class="ds-v">' + avgC + '</div></div>' +
-    '</div></div>' +
-    '<button class="dp-close" onclick="closeDetail()">X Close</button></div>' +
-    '<div class="dp-body">' +
-      '<table class="dp-tbl">' +
-        '<thead><tr><th>Date</th><th>Sales</th><th>Jobs</th><th>Customers</th><th>$/Cust</th></tr></thead>' +
-        '<tbody>' + rows + '</tbody>' +
-        '<tfoot><tr><td>Total (' + filtered.length + ' days)</td><td>' + fmt(tS) + '</td><td>' + tJ + '</td><td>' + tC + '</td><td>' + avgC + '</td></tr></tfoot>' +
-      '</table>' +
-    '</div></div>');
-}
-
-function setDetail(html) {
-  var el = document.getElementById('detail');
-  if (el) {
-    el.innerHTML = html;
-    el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
-  }
-}
-
-function clearDetail() {
-  var el = document.getElementById('detail');
-  if (el) el.innerHTML = '';
-  selected = null;
-}
-
-function closeDetail() {
-  selected = null;
-  rStart = null;
-  rEnd = null;
-  clearDetail();
-  
-  var rl = document.getElementById('range-lbl');
-  if (rl) {
-    rl.textContent = '';
-    rl.style.display = 'none';
-  }
-  
-  var cb = document.getElementById('clear-btn');
-  if (cb) cb.style.display = 'none';
-  
-  if (rangeMode) {
-    var hint = document.getElementById('range-hint');
-    if (hint) hint.style.display = 'inline';
-  }
-  
-  render();
-}
-
-// ── EVENT DELEGATION ───────────────────────────────────────────────────────
-document.addEventListener('click', function(e) {
-  var el = e.target.closest('[data-ds]');
-  if (el && typeof dayClick === 'function') {
-    dayClick(el.getAttribute('data-ds'));
-  }
-});
 
 // ── INITIALIZATION ─────────────────────────────────────────────────────────
+
+function fetchFromSheets() {
+  if (!scriptUrl) return;
+  var url = scriptUrl + (scriptUrl.indexOf('?') > -1 ? '&' : '?') + 'cb=' + Date.now();
+  
+  fetch(url)
+    .then(function(res) { return res.json(); })
+    .then(function(res) {
+      if (res.status === 'ok' && res.rows && res.rows.length > 0) {
+        salesData = res.rows;
+        salesData.sort(function(a, b) { return a.date.localeCompare(b.date); });
+        localStorage.setItem('tfg_data', JSON.stringify(salesData));
+        lookup = buildLookup();
+        render();
+        checkSetupWarn();
+      }
+    })
+    .catch(function(err) { console.error('Sync Error:', err); });
+}
+
 window.onload = function() {
   var today = new Date().toISOString().split('T')[0];
-  document.getElementById('sales-date').value = today;
+  var dateInp = document.getElementById('sales-date');
+  if (dateInp) dateInp.value = today;
+  
   updateDayLabel();
   buildDeptRows();
   checkSetupWarn();
@@ -1733,7 +979,17 @@ window.onload = function() {
   
   salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
   lookup = buildLookup();
+  render();
+  fetchFromSheets();
 };
+
+// ── EVENT DELEGATION ───────────────────────────────────────────────────────
+document.addEventListener('click', function(e) {
+  var el = e.target.closest('[data-ds]');
+  if (el && typeof dayClick === 'function') {
+    dayClick(el.getAttribute('data-ds'));
+  }
+});
 </script>
 </body>
 </html>

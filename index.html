@@ -255,6 +255,7 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
   <div class="hdr-nav">
     <span class="nav-btn active" id="nav-entry" onclick="showApp('entry')">Daily Entry</span>
     <span class="nav-btn" onclick="showApp('history')">Sales History</span>
+    <span class="nav-btn" onclick="showApp('analytics')">Analytics</span>
     <span class="nav-btn" id="nav-setup" onclick="showApp('setup')">Setup</span>
   </div>
 </div>
@@ -497,6 +498,105 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 </div>
 </div>
 
+<div class="page" id="pg-analytics" style="display:none">
+  <div class="pg-title">Sales Analytics</div>
+  <div class="pg-sub">Trends, comparisons, and insights from your sales data.</div>
+  
+  <div id="sync-banner-analytics" style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:var(--r);margin-bottom:14px;font-size:13px;font-weight:600;font-family:var(--fb);background:#f8f7f7;border:1.5px solid #e6e6e6;color:#4d4d4d">
+    <span id="sync-icon-analytics">⏳</span>
+    <span id="sync-text-analytics">Loading data...</span>
+  </div>
+
+  <!-- Sales Trends Chart -->
+  <div class="setup-card" style="margin-bottom:24px">
+    <h3>📊 Sales Trends</h3>
+    <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="nav-btn" id="trend-30d" onclick="updateTrendChart('30d')" style="padding:7px 14px;font-size:12px">Last 30 Days</button>
+      <button class="nav-btn active" id="trend-90d" onclick="updateTrendChart('90d')" style="padding:7px 14px;font-size:12px">Last 90 Days</button>
+      <button class="nav-btn" id="trend-year" onclick="updateTrendChart('year')" style="padding:7px 14px;font-size:12px">This Year</button>
+    </div>
+    <canvas id="trend-canvas" style="max-height:320px;width:100%"></canvas>
+  </div>
+
+  <!-- Daily Breakdown - Click to see top departments -->
+  <div class="setup-card" style="margin-bottom:24px">
+    <h3>🎯 Daily Breakdown</h3>
+    <p style="font-size:13px;color:var(--gd);margin-bottom:14px">Click any day below to see the highest-performing job types.</p>
+    <div style="max-height:400px;overflow-y:auto;background:var(--wh);border:1.5px solid var(--gm);border-radius:var(--r)">
+      <table class="week-tbl" id="daily-breakdown-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Day</th>
+            <th>Sales</th>
+            <th>Jobs</th>
+            <th>Customers</th>
+          </tr>
+        </thead>
+        <tbody id="daily-breakdown-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Day Detail Panel (shown when day is clicked) -->
+  <div id="day-detail-panel" style="display:none;background:var(--wh);border:1.5px solid var(--gm);border-radius:var(--rl);overflow:hidden;box-shadow:var(--sh);margin-bottom:24px;animation:slideIn 0.24s ease both">
+    <div style="padding:18px 22px;background:var(--red);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:var(--fd);font-style:italic;font-size:20px;color:var(--wh);margin-bottom:8px" id="day-detail-title">Top Departments</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.8px" id="day-detail-date"></div>
+      </div>
+      <button class="dp-close" onclick="closeDayDetail()">Close</button>
+    </div>
+    <div style="padding:20px 22px">
+      <table class="dp-tbl" id="day-detail-table">
+        <thead>
+          <tr>
+            <th>Department</th>
+            <th>Jobs</th>
+            <th>Sales</th>
+            <th>% of Total</th>
+          </tr>
+        </thead>
+        <tbody id="day-detail-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Week Comparison -->
+  <div class="setup-card" style="margin-bottom:24px">
+    <h3>📅 Week Comparison</h3>
+    <p style="font-size:13px;color:var(--gd);margin-bottom:14px">Compare one week against another week from a different year.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:16px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--gd);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Week 1</label>
+        <input type="week" id="week1-input" style="width:100%;border:1.5px solid var(--gm);border-radius:var(--r);padding:9px 10px;font-family:var(--fb);font-size:13px" onchange="compareWeeks()">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--gd);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Week 2</label>
+        <input type="week" id="week2-input" style="width:100%;border:1.5px solid var(--gm);border-radius:var(--r);padding:9px 10px;font-family:var(--fb);font-size:13px" onchange="compareWeeks()">
+      </div>
+    </div>
+    <div id="week-comparison-result"></div>
+  </div>
+
+  <!-- Month Comparison -->
+  <div class="setup-card">
+    <h3>📆 Month Comparison</h3>
+    <p style="font-size:13px;color:var(--gd);margin-bottom:14px">Compare one month against another month from a different year.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:16px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--gd);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Month 1</label>
+        <input type="month" id="month1-input" style="width:100%;border:1.5px solid var(--gm);border-radius:var(--r);padding:9px 10px;font-family:var(--fb);font-size:13px" onchange="compareMonths()">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--gd);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Month 2</label>
+        <input type="month" id="month2-input" style="width:100%;border:1.5px solid var(--gm);border-radius:var(--r);padding:9px 10px;font-family:var(--fb);font-size:13px" onchange="compareMonths()">
+      </div>
+    </div>
+    <div id="month-comparison-result"></div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════════════════════════════
 // TFG Sales App v3.0
@@ -587,12 +687,18 @@ function addDays(date, n) {
 
 // ── APP NAVIGATION ─────────────────────────────────────────────────────────
 function showApp(name) {
-  document.getElementById('app-entry').style.display = name === 'history' ? 'none' : 'block';
+  document.getElementById('app-entry').style.display = (name === 'history' || name === 'analytics') ? 'none' : 'block';
   document.getElementById('app-history').style.display = name === 'history' ? 'block' : 'none';
   
-  if (name !== 'history') {
+  if (name === 'analytics') {
+    document.getElementById('pg-analytics').style.display = 'block';
+    document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelector('[onclick="showApp(\'analytics\')"]').classList.add('active');
+    initAnalytics();
+  } else if (name !== 'history') {
     document.getElementById('pg-entry').style.display = name === 'entry' ? 'block' : 'none';
     document.getElementById('pg-setup').style.display = name === 'setup' ? 'block' : 'none';
+    document.getElementById('pg-analytics').style.display = 'none';
     document.getElementById('nav-entry').classList.toggle('active', name === 'entry');
     document.getElementById('nav-setup').classList.toggle('active', name === 'setup');
     if (name === 'setup') {
@@ -600,6 +706,7 @@ function showApp(name) {
       showGeminiStatus();
     }
   } else {
+    document.getElementById('pg-analytics').style.display = 'none';
     salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
     lookup = buildLookup();
     setView('month');
@@ -996,12 +1103,9 @@ function copyScript() {
 function setScriptCode() {
   document.getElementById('script-code').textContent = 
 '// ═══════════════════════════════════════════════════\n' +
-'// TFG Sales App — Apps Script v2.8\n' +
-'// Keys: date, totalJobs, totalSales, cash, eftpos,\n' +
-'//       customers, notes, departments\n' +
-'// Date format: YYYY-MM-DD (forced, no exceptions)\n' +
-'// ═══════════════════════════════════════════════════\n\n' +
-'// ── Utility: force date to YYYY-MM-DD string ──────\n' +
+'// TFG Sales App — Apps Script v2.9 (Debug)\n' +
+'// ═══════════════════════════════════════════════════\n' +
+'\n' +
 'function toYMD(val) {\n' +
 '  if (!val) return \'\';\n' +
 '  if (val instanceof Date) {\n' +
@@ -1010,29 +1114,46 @@ function setScriptCode() {
 '    var d = String(val.getDate()).padStart(2, \'0\');\n' +
 '    return y + \'-\' + m + \'-\' + d;\n' +
 '  }\n' +
-'  // Already a string — extract YYYY-MM-DD if present\n' +
 '  var s = String(val);\n' +
 '  var match = s.match(/(\\d{4})-(\\d{2})-(\\d{2})/);\n' +
 '  return match ? match[0] : s.trim();\n' +
-'}\n\n' +
-'// ── doGet: returns all sales rows for cross-device sync ──\n' +
+'}\n' +
+'\n' +
 'function doGet(e) {\n' +
 '  try {\n' +
 '    var ss    = SpreadsheetApp.getActiveSpreadsheet();\n' +
-'    var sheet = ss.getSheetByName(\'Sales\');\n\n' +
+'    var sheet = ss.getSheetByName(\'Sales\');\n' +
+'\n' +
 '    if (!sheet) {\n' +
 '      return ContentService\n' +
 '        .createTextOutput(JSON.stringify({ error: \'Sheet Sales not found\' }))\n' +
 '        .setMimeType(ContentService.MimeType.JSON);\n' +
-'    }\n\n' +
+'    }\n' +
+'\n' +
 '    var lastRow = sheet.getLastRow();\n' +
+'    Logger.log(\'Last row: \' + lastRow);\n' +
+'    \n' +
 '    if (lastRow < 2) {\n' +
 '      return ContentService\n' +
 '        .createTextOutput(JSON.stringify({ status: \'ok\', rows: [] }))\n' +
 '        .setMimeType(ContentService.MimeType.JSON);\n' +
-'    }\n\n' +
+'    }\n' +
+'\n' +
 '    var data    = sheet.getDataRange().getValues();\n' +
-'    var headers = data[0].map(function(h) { return String(h).trim(); });\n\n' +
+'    var headers = data[0].map(function(h) { return String(h).trim(); });\n' +
+'\n' +
+'    // DEBUG: Log first data row\n' +
+'    if (data.length > 1) {\n' +
+'      Logger.log(\'First data row:\');\n' +
+'      Logger.log(\'  Raw value in A2: \' + data[1][0]);\n' +
+'      Logger.log(\'  Type: \' + typeof data[1][0]);\n' +
+'      Logger.log(\'  Is Date: \' + (data[1][0] instanceof Date));\n' +
+'      if (data[1][0] instanceof Date) {\n' +
+'        Logger.log(\'  Date value: \' + data[1][0].toISOString());\n' +
+'      }\n' +
+'      Logger.log(\'  After toYMD: \' + toYMD(data[1][0]));\n' +
+'    }\n' +
+'\n' +
 '    var DEPT_NAMES = {\n' +
 '      D01:\'Batteries\', D02:\'Watch Bands\', D03:\'Transponders\', D04:\'Remotes\',\n' +
 '      D05:\'Glue\', D06:\'House Keys\', D07:\'Heels & Soles\', D08:\'Patching\',\n' +
@@ -1041,16 +1162,29 @@ function setScriptCode() {
 '      D16:\'Stitching\', D17:\'Stitch\'\n' +
 '    };\n' +
 '    var CODES = [\'D01\',\'D02\',\'D03\',\'D04\',\'D05\',\'D06\',\'D07\',\'D08\',\'D09\',\n' +
-'                 \'D10\',\'D11\',\'D12\',\'D13\',\'D14\',\'D15\',\'D16\',\'D17\'];\n\n' +
-'    // Build column index map once\n' +
+'                 \'D10\',\'D11\',\'D12\',\'D13\',\'D14\',\'D15\',\'D16\',\'D17\'];\n' +
+'\n' +
 '    var idx = {};\n' +
-'    headers.forEach(function(h, i) { idx[h] = i; });\n\n' +
+'    headers.forEach(function(h, i) { idx[h] = i; });\n' +
+'\n' +
 '    var rows = [];\n' +
 '    for (var i = 1; i < data.length; i++) {\n' +
 '      var row = data[i];\n' +
-'      if (!row[0]) continue; // skip blank rows\n\n' +
+'      if (!row[0]) {\n' +
+'        Logger.log(\'Row \' + (i+1) + \': Skipped - empty first cell\');\n' +
+'        continue;\n' +
+'      }\n' +
+'\n' +
 '      var dateStr = toYMD(row[0]);\n' +
-'      if (!dateStr || !dateStr.match(/^\\d{4}-\\d{2}-\\d{2}$/)) continue;\n\n' +
+'      Logger.log(\'Row \' + (i+1) + \': dateStr = \"\' + dateStr + \'\"\');\n' +
+'      \n' +
+'      if (!dateStr || !dateStr.match(/^\\d{4}-\\d{2}-\\d{2}$/)) {\n' +
+'        Logger.log(\'Row \' + (i+1) + \': REJECTED - invalid date format\');\n' +
+'        continue;\n' +
+'      }\n' +
+'\n' +
+'      Logger.log(\'Row \' + (i+1) + \': ACCEPTED\');\n' +
+'\n' +
 '      var departments = {};\n' +
 '      CODES.forEach(function(code) {\n' +
 '        var jIdx = idx[code + \' Jobs\'];\n' +
@@ -1064,7 +1198,8 @@ function setScriptCode() {
 '            sales: sales\n' +
 '          };\n' +
 '        }\n' +
-'      });\n\n' +
+'      });\n' +
+'\n' +
 '      rows.push({\n' +
 '        date:       dateStr,\n' +
 '        customers:  parseFloat(idx[\'Customers\']  !== undefined ? row[idx[\'Customers\']]  : 0) || 0,\n' +
@@ -1075,21 +1210,26 @@ function setScriptCode() {
 '        notes:      idx[\'Notes\'] !== undefined ? String(row[idx[\'Notes\']] || \'\') : \'\',\n' +
 '        departments: departments\n' +
 '      });\n' +
-'    }\n\n' +
+'    }\n' +
+'\n' +
+'    Logger.log(\'Total valid rows found: \' + rows.length);\n' +
+'\n' +
 '    return ContentService\n' +
 '      .createTextOutput(JSON.stringify({ status: \'ok\', rows: rows }))\n' +
-'      .setMimeType(ContentService.MimeType.JSON);\n\n' +
+'      .setMimeType(ContentService.MimeType.JSON);\n' +
+'\n' +
 '  } catch(err) {\n' +
+'    Logger.log(\'ERROR: \' + err.toString());\n' +
 '    return ContentService\n' +
 '      .createTextOutput(JSON.stringify({ status: \'error\', msg: err.toString() }))\n' +
 '      .setMimeType(ContentService.MimeType.JSON);\n' +
 '  }\n' +
-'}\n\n' +
-'// ── doPost: saves sales data + receipt image ──────\n' +
+'}\n' +
+'\n' +
 'function doPost(e) {\n' +
 '  try {\n' +
-'    var payload = JSON.parse(e.postData.contents);\n\n' +
-'    // ── Receipt image → Google Drive ──────────────\n' +
+'    var payload = JSON.parse(e.postData.contents);\n' +
+'\n' +
 '    if (payload.type === \'image\') {\n' +
 '      var folders = DriveApp.getFoldersByName(\'TFG Daily Receipts\');\n' +
 '      var folder  = folders.hasNext()\n' +
@@ -1101,26 +1241,29 @@ function setScriptCode() {
 '      return ContentService\n' +
 '        .createTextOutput(JSON.stringify({ status: \'ok\', type: \'image\' }))\n' +
 '        .setMimeType(ContentService.MimeType.JSON);\n' +
-'    }\n\n' +
-'    // ── Sales data → Google Sheets ────────────────\n' +
+'    }\n' +
+'\n' +
 '    var data  = payload.data || payload;\n' +
 '    var ss    = SpreadsheetApp.getActiveSpreadsheet();\n' +
-'    var sheet = ss.getSheetByName(\'Sales\') || ss.insertSheet(\'Sales\');\n\n' +
+'    var sheet = ss.getSheetByName(\'Sales\') || ss.insertSheet(\'Sales\');\n' +
+'\n' +
 '    var CODES = [\'D01\',\'D02\',\'D03\',\'D04\',\'D05\',\'D06\',\'D07\',\'D08\',\'D09\',\n' +
 '                 \'D10\',\'D11\',\'D12\',\'D13\',\'D14\',\'D15\',\'D16\',\'D17\'];\n' +
-'    var depts = data.departments || {};\n\n' +
-'    // Write header row if sheet is empty\n' +
+'    var depts = data.departments || {};\n' +
+'\n' +
 '    if (sheet.getLastRow() === 0) {\n' +
 '      var h = [\'Date\',\'Day\',\'Customers\',\'Total Jobs\',\'Total Sales\',\n' +
 '               \'Cash\',\'EFTPOS\',\'Notes\',\'Submitted\'];\n' +
 '      CODES.forEach(function(c) { h.push(c + \' Jobs\'); h.push(c + \' $\'); });\n' +
 '      sheet.appendRow(h);\n' +
-'    }\n\n' +
-'    // Force date to YYYY-MM-DD\n' +
+'    }\n' +
+'\n' +
 '    var dateStr = toYMD(data.date || \'\');\n' +
-'    if (!dateStr) throw new Error(\'Invalid date: \' + data.date);\n\n' +
+'    if (!dateStr) throw new Error(\'Invalid date: \' + data.date);\n' +
+'\n' +
 '    var d  = new Date(dateStr + \'T12:00:00\');\n' +
-'    var DN = [\'Sun\',\'Mon\',\'Tue\',\'Wed\',\'Thu\',\'Fri\',\'Sat\'];\n\n' +
+'    var DN = [\'Sun\',\'Mon\',\'Tue\',\'Wed\',\'Thu\',\'Fri\',\'Sat\'];\n' +
+'\n' +
 '    var row = [\n' +
 '      dateStr,\n' +
 '      DN[d.getDay()],\n' +
@@ -1136,8 +1279,8 @@ function setScriptCode() {
 '      var dept = depts[c] || {};\n' +
 '      row.push(dept.jobs  || 0);\n' +
 '      row.push(dept.sales || 0);\n' +
-'    });\n\n' +
-'    // Update existing row if same date, otherwise append\n' +
+'    });\n' +
+'\n' +
 '    var existingRow = -1;\n' +
 '    var lastRow = sheet.getLastRow();\n' +
 '    if (lastRow > 1) {\n' +
@@ -1148,27 +1291,25 @@ function setScriptCode() {
 '          break;\n' +
 '        }\n' +
 '      }\n' +
-'    }\n\n' +
+'    }\n' +
+'\n' +
 '    if (existingRow > 0) {\n' +
 '      sheet.getRange(existingRow, 1, 1, row.length).setValues([row]);\n' +
 '    } else {\n' +
 '      sheet.appendRow(row);\n' +
-'    }\n\n' +
+'    }\n' +
+'\n' +
 '    return ContentService\n' +
 '      .createTextOutput(JSON.stringify({ status: \'ok\', type: \'sales\' }))\n' +
-'      .setMimeType(ContentService.MimeType.JSON);\n\n' +
+'      .setMimeType(ContentService.MimeType.JSON);\n' +
+'\n' +
 '  } catch(err) {\n' +
 '    return ContentService\n' +
 '      .createTextOutput(JSON.stringify({ status: \'error\', msg: err.toString() }))\n' +
 '      .setMimeType(ContentService.MimeType.JSON);\n' +
 '  }\n' +
-'}\n\n' +
-'// ── Run ONCE to save Gemini key securely ─────────\n' +
-'function setGeminiKey() {\n' +
-'  PropertiesService.getScriptProperties()\n' +
-'    .setProperty(\'GEMINI_KEY\', \'PASTE_YOUR_KEY_HERE\');\n' +
-'  Logger.log(\'Gemini key saved.\');\n' +
-'}\n';
+'}\n' +
+'\n';
 }
 
 // ── SYNC ───────────────────────────────────────────────────────────────────
@@ -1739,6 +1880,395 @@ window.onload = function() {
   salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
   lookup = buildLookup();
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ANALYTICS FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+var trendChart = null;
+var currentTrendPeriod = '90d';
+
+function initAnalytics() {
+  salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
+  lookup = buildLookup();
+  
+  var banner = document.getElementById('sync-banner-analytics');
+  var icon = document.getElementById('sync-icon-analytics');
+  var text = document.getElementById('sync-text-analytics');
+  
+  if (salesData.length === 0) {
+    banner.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:var(--r);margin-bottom:14px;font-size:13px;font-weight:600;font-family:var(--fb);background:#fef9c3;border:1.5px solid #fde047;color:#92400e';
+    icon.textContent = '⚠️';
+    text.textContent = 'No sales data yet — add sales in Daily Entry or connect Google Sheets';
+  } else {
+    banner.style.cssText = 'display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:var(--r);margin-bottom:14px;font-size:13px;font-weight:600;font-family:var(--fb);background:#dcfce7;border:1.5px solid #86efac;color:#16a34a';
+    icon.textContent = '✅';
+    text.textContent = salesData.length + ' days of sales data loaded';
+  }
+  
+  updateTrendChart(currentTrendPeriod);
+  populateDailyBreakdown();
+}
+
+function updateTrendChart(period) {
+  currentTrendPeriod = period;
+  
+  // Update button states
+  ['trend-30d', 'trend-90d', 'trend-year'].forEach(function(id) {
+    var btn = document.getElementById(id);
+    if (btn) btn.classList.remove('active');
+  });
+  var activeBtn = document.getElementById('trend-' + period);
+  if (activeBtn) activeBtn.classList.add('active');
+  
+  var canvas = document.getElementById('trend-canvas');
+  if (!canvas) return;
+  
+  var ctx = canvas.getContext('2d');
+  var width = canvas.parentElement.clientWidth;
+  canvas.width = width;
+  canvas.height = 320;
+  
+  // Get data for the period
+  var today = new Date();
+  var days = period === '30d' ? 30 : period === '90d' ? 90 : 365;
+  var data = [];
+  
+  for (var i = days - 1; i >= 0; i--) {
+    var d = new Date(today);
+    d.setDate(d.getDate() - i);
+    var dateStr = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    var dayData = lookup[dateStr];
+    data.push({
+      date: dateStr,
+      sales: dayData ? dayData.totalSales : 0,
+      label: d.getDate() === 1 ? MONTHS_S[d.getMonth()] : d.getDate().toString()
+    });
+  }
+  
+  var maxSales = Math.max.apply(null, data.map(function(d) { return d.sales; }));
+  if (maxSales === 0) maxSales = 1000;
+  
+  // Clear canvas
+  ctx.clearRect(0, 0, width, 320);
+  
+  // Draw grid and labels
+  ctx.strokeStyle = '#e6e6e6';
+  ctx.lineWidth = 1;
+  ctx.font = '10px JustSans, sans-serif';
+  ctx.fillStyle = '#999';
+  
+  var steps = 5;
+  for (var i = 0; i <= steps; i++) {
+    var y = 30 + (260 * i / steps);
+    ctx.beginPath();
+    ctx.moveTo(50, y);
+    ctx.lineTo(width - 10, y);
+    ctx.stroke();
+    
+    var val = maxSales * (1 - i / steps);
+    ctx.fillText('$' + Math.round(val).toLocaleString(), 5, y + 3);
+  }
+  
+  // Draw bars
+  var barWidth = (width - 60) / data.length;
+  var maxBarHeight = 260;
+  
+  data.forEach(function(d, idx) {
+    var x = 50 + idx * barWidth;
+    var barH = (d.sales / maxSales) * maxBarHeight;
+    var y = 30 + (maxBarHeight - barH);
+    
+    // Bar color based on sales
+    if (d.sales === 0) {
+      ctx.fillStyle = '#f8f7f7';
+    } else if (d.sales < 1000) {
+      ctx.fillStyle = '#fca5a5';
+    } else if (d.sales < 1900) {
+      ctx.fillStyle = '#fde047';
+    } else if (d.sales < 2300) {
+      ctx.fillStyle = '#86efac';
+    } else {
+      ctx.fillStyle = '#16a34a';
+    }
+    
+    ctx.fillRect(x + 1, y, barWidth - 2, barH);
+    
+    // Label every 7th day for 90d, every day for 30d, every 30th for year
+    var showLabel = false;
+    if (period === '30d') showLabel = true;
+    else if (period === '90d') showLabel = idx % 7 === 0;
+    else showLabel = idx % 30 === 0 || d.label.includes('Jan');
+    
+    if (showLabel) {
+      ctx.fillStyle = '#666';
+      ctx.font = '9px JustSans, sans-serif';
+      ctx.fillText(d.label, x, 305);
+    }
+  });
+}
+
+function populateDailyBreakdown() {
+  var tbody = document.getElementById('daily-breakdown-body');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  if (salesData.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:28px;color:#999">No sales data yet</td></tr>';
+    return;
+  }
+  
+  // Sort by date descending
+  var sorted = salesData.slice().sort(function(a, b) {
+    return b.date.localeCompare(a.date);
+  }).slice(0, 30); // Last 30 days
+  
+  sorted.forEach(function(day) {
+    var d = new Date(day.date + 'T12:00:00');
+    var tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.onclick = function() { showDayDetail(day); };
+    
+    tr.innerHTML = 
+      '<td>' + day.date + '</td>' +
+      '<td>' + DAYS_S[d.getDay()] + '</td>' +
+      '<td style="font-weight:600">$' + (day.totalSales || 0).toFixed(2) + '</td>' +
+      '<td>' + (day.totalJobs || 0) + '</td>' +
+      '<td>' + (day.customers || 0) + '</td>';
+    
+    tbody.appendChild(tr);
+  });
+}
+
+function showDayDetail(day) {
+  var panel = document.getElementById('day-detail-panel');
+  var title = document.getElementById('day-detail-title');
+  var date = document.getElementById('day-detail-date');
+  var body = document.getElementById('day-detail-body');
+  
+  if (!panel || !body) return;
+  
+  var d = new Date(day.date + 'T12:00:00');
+  date.textContent = DAYS_F[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+  
+  body.innerHTML = '';
+  
+  if (!day.departments || Object.keys(day.departments).length === 0) {
+    body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#999">No department data for this day</td></tr>';
+  } else {
+    // Convert to array and sort by sales descending
+    var depts = [];
+    for (var code in day.departments) {
+      depts.push({
+        code: code,
+        name: day.departments[code].name,
+        jobs: day.departments[code].jobs,
+        sales: day.departments[code].sales
+      });
+    }
+    
+    depts.sort(function(a, b) { return b.sales - a.sales; });
+    
+    depts.forEach(function(dept) {
+      var pct = day.totalSales > 0 ? (dept.sales / day.totalSales * 100).toFixed(1) : 0;
+      var tr = document.createElement('tr');
+      tr.innerHTML = 
+        '<td><strong>' + dept.code + '</strong> ' + dept.name + '</td>' +
+        '<td>' + dept.jobs + '</td>' +
+        '<td style="font-weight:600">$' + dept.sales.toFixed(2) + '</td>' +
+        '<td style="color:#16a34a;font-weight:600">' + pct + '%</td>';
+      body.appendChild(tr);
+    });
+  }
+  
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeDayDetail() {
+  var panel = document.getElementById('day-detail-panel');
+  if (panel) panel.style.display = 'none';
+}
+
+function compareWeeks() {
+  var week1 = document.getElementById('week1-input').value;
+  var week2 = document.getElementById('week2-input').value;
+  var result = document.getElementById('week-comparison-result');
+  
+  if (!week1 || !week2 || !result) return;
+  
+  // Parse week inputs (format: YYYY-Wxx)
+  var w1 = parseWeekInput(week1);
+  var w2 = parseWeekInput(week2);
+  
+  if (!w1 || !w2) {
+    result.innerHTML = '<p style="color:#999;text-align:center;padding:20px">Select both weeks to compare</p>';
+    return;
+  }
+  
+  var w1Data = getWeekData(w1.start, w1.end);
+  var w2Data = getWeekData(w2.start, w2.end);
+  
+  var diff = w1Data.sales - w2Data.sales;
+  var pct = w2Data.sales > 0 ? ((diff / w2Data.sales) * 100).toFixed(1) : 0;
+  var isUp = diff > 0;
+  
+  result.innerHTML = 
+    '<div style="background:var(--wh);border:1.5px solid var(--gm);border-radius:var(--r);padding:18px">' +
+    '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;margin-bottom:18px">' +
+    '<div style="text-align:center">' +
+    '<div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Week ' + week1 + '</div>' +
+    '<div style="font-family:var(--fd);font-style:italic;font-size:24px;color:var(--blk)">$' + w1Data.sales.toFixed(2) + '</div>' +
+    '<div style="font-size:12px;color:#666;margin-top:4px">' + w1Data.jobs + ' jobs · ' + w1Data.customers + ' customers</div>' +
+    '</div>' +
+    '<div style="font-size:20px;color:' + (isUp ? 'var(--grn)' : 'var(--red)') + '">' + (isUp ? '▲' : '▼') + '</div>' +
+    '<div style="text-align:center">' +
+    '<div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Week ' + week2 + '</div>' +
+    '<div style="font-family:var(--fd);font-style:italic;font-size:24px;color:var(--blk)">$' + w2Data.sales.toFixed(2) + '</div>' +
+    '<div style="font-size:12px;color:#666;margin-top:4px">' + w2Data.jobs + ' jobs · ' + w2Data.customers + ' customers</div>' +
+    '</div>' +
+    '</div>' +
+    '<div style="background:' + (isUp ? 'var(--grn-l)' : '#fef2f2') + ';border:1.5px solid ' + (isUp ? 'var(--grn-b)' : '#fca5a5') + ';border-radius:var(--r);padding:14px;text-align:center">' +
+    '<div style="font-size:13px;font-weight:600;color:' + (isUp ? 'var(--grn)' : 'var(--red-dk)') + ';margin-bottom:4px">' +
+    (isUp ? '↑' : '↓') + ' $' + Math.abs(diff).toFixed(2) + ' (' + (isUp ? '+' : '') + pct + '%)' +
+    '</div>' +
+    '<div style="font-size:11px;color:' + (isUp ? 'var(--grn)' : 'var(--red-dk)') + '">' +
+    'Week 1 ' + (isUp ? 'outperformed' : 'underperformed') + ' Week 2' +
+    '</div>' +
+    '</div>' +
+    '</div>';
+}
+
+function compareMonths() {
+  var month1 = document.getElementById('month1-input').value;
+  var month2 = document.getElementById('month2-input').value;
+  var result = document.getElementById('month-comparison-result');
+  
+  if (!month1 || !month2 || !result) return;
+  
+  var m1Data = getMonthData(month1);
+  var m2Data = getMonthData(month2);
+  
+  var diff = m1Data.sales - m2Data.sales;
+  var pct = m2Data.sales > 0 ? ((diff / m2Data.sales) * 100).toFixed(1) : 0;
+  var isUp = diff > 0;
+  
+  var m1Parts = month1.split('-');
+  var m2Parts = month2.split('-');
+  var m1Label = MONTHS[parseInt(m1Parts[1]) - 1] + ' ' + m1Parts[0];
+  var m2Label = MONTHS[parseInt(m2Parts[1]) - 1] + ' ' + m2Parts[0];
+  
+  result.innerHTML = 
+    '<div style="background:var(--wh);border:1.5px solid var(--gm);border-radius:var(--r);padding:18px">' +
+    '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;margin-bottom:18px">' +
+    '<div style="text-align:center">' +
+    '<div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">' + m1Label + '</div>' +
+    '<div style="font-family:var(--fd);font-style:italic;font-size:24px;color:var(--blk)">$' + m1Data.sales.toFixed(2) + '</div>' +
+    '<div style="font-size:12px;color:#666;margin-top:4px">' + m1Data.jobs + ' jobs · ' + m1Data.customers + ' customers · ' + m1Data.days + ' days</div>' +
+    '</div>' +
+    '<div style="font-size:20px;color:' + (isUp ? 'var(--grn)' : 'var(--red)') + '">' + (isUp ? '▲' : '▼') + '</div>' +
+    '<div style="text-align:center">' +
+    '<div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">' + m2Label + '</div>' +
+    '<div style="font-family:var(--fd);font-style:italic;font-size:24px;color:var(--blk)">$' + m2Data.sales.toFixed(2) + '</div>' +
+    '<div style="font-size:12px;color:#666;margin-top:4px">' + m2Data.jobs + ' jobs · ' + m2Data.customers + ' customers · ' + m2Data.days + ' days</div>' +
+    '</div>' +
+    '</div>' +
+    '<div style="background:' + (isUp ? 'var(--grn-l)' : '#fef2f2') + ';border:1.5px solid ' + (isUp ? 'var(--grn-b)' : '#fca5a5') + ';border-radius:var(--r);padding:14px;text-align:center">' +
+    '<div style="font-size:13px;font-weight:600;color:' + (isUp ? 'var(--grn)' : 'var(--red-dk)') + ';margin-bottom:4px">' +
+    (isUp ? '↑' : '↓') + ' $' + Math.abs(diff).toFixed(2) + ' (' + (isUp ? '+' : '') + pct + '%)' +
+    '</div>' +
+    '<div style="font-size:11px;color:' + (isUp ? 'var(--grn)' : 'var(--red-dk)') + '">' +
+    m1Label + ' ' + (isUp ? 'outperformed' : 'underperformed') + ' ' + m2Label +
+    '</div>' +
+    '</div>' +
+    '</div>';
+}
+
+function parseWeekInput(weekStr) {
+  // Format: YYYY-Wxx
+  var parts = weekStr.split('-W');
+  if (parts.length !== 2) return null;
+  
+  var year = parseInt(parts[0]);
+  var week = parseInt(parts[1]);
+  
+  // Get first day of year
+  var jan1 = new Date(year, 0, 1);
+  var days = (week - 1) * 7;
+  
+  // Find Monday of week 1
+  var day = jan1.getDay();
+  var mondayOffset = day <= 4 ? 1 - day : 8 - day;
+  var monday = new Date(year, 0, 1 + mondayOffset + days);
+  
+  var sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  
+  return {
+    start: monday.getFullYear() + '-' + pad2(monday.getMonth() + 1) + '-' + pad2(monday.getDate()),
+    end: sunday.getFullYear() + '-' + pad2(sunday.getMonth() + 1) + '-' + pad2(sunday.getDate())
+  };
+}
+
+function getWeekData(startDate, endDate) {
+  var sales = 0;
+  var jobs = 0;
+  var customers = 0;
+  var days = 0;
+  
+  var current = new Date(startDate + 'T12:00:00');
+  var end = new Date(endDate + 'T12:00:00');
+  
+  while (current <= end) {
+    var dateStr = current.getFullYear() + '-' + pad2(current.getMonth() + 1) + '-' + pad2(current.getDate());
+    var dayData = lookup[dateStr];
+    
+    if (dayData) {
+      sales += dayData.totalSales || 0;
+      jobs += dayData.totalJobs || 0;
+      customers += dayData.customers || 0;
+      days++;
+    }
+    
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return { sales: sales, jobs: jobs, customers: customers, days: days };
+}
+
+function getMonthData(monthStr) {
+  // Format: YYYY-MM
+  var parts = monthStr.split('-');
+  var year = parseInt(parts[0]);
+  var month = parseInt(parts[1]) - 1;
+  
+  var sales = 0;
+  var jobs = 0;
+  var customers = 0;
+  var days = 0;
+  
+  var daysInMonth = new Date(year, month + 1, 0).getDate();
+  
+  for (var d = 1; d <= daysInMonth; d++) {
+    var dateStr = year + '-' + pad2(month + 1) + '-' + pad2(d);
+    var dayData = lookup[dateStr];
+    
+    if (dayData) {
+      sales += dayData.totalSales || 0;
+      jobs += dayData.totalJobs || 0;
+      customers += dayData.customers || 0;
+      days++;
+    }
+  }
+  
+  return { sales: sales, jobs: jobs, customers: customers, days: days };
+}
+
+function pad2(n) {
+  return n < 10 ? '0' + n : '' + n;
+}
+
 </script>
 </body>
 </html>

@@ -24,6 +24,9 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 .hdr-nav { display:flex; gap:6px; flex-wrap:wrap; }
 .nav-btn { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:var(--r); padding:6px 13px; font-family:var(--fb); font-size:12px; font-weight:600; color:var(--wh); text-decoration:none; cursor:pointer; transition:background 0.15s; }
 .nav-btn:hover, .nav-btn.active { background:var(--red); border-color:var(--red); }
+.nav-btn.light { background:transparent; border:1.5px solid var(--blk); color:var(--blk); }
+.nav-btn.light:hover { background:rgba(0,0,0,0.05); }
+.nav-btn.light.active { background:var(--red); border-color:var(--red); color:var(--wh); }
 
 .page { padding:clamp(14px,4vw,32px) clamp(12px,4vw,32px) 48px; }
 .pg-title { font-family:var(--fd); font-style:italic; font-size:clamp(19px,4vw,26px); color:var(--blk); margin-bottom:4px; }
@@ -499,6 +502,18 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 </div>
 
 <div class="page" id="pg-analytics" style="display:none">
+  <!-- Header for Analytics page -->
+  <div class="hdr">
+    <div class="hdr-brand">The Fix Guys — Sales <span style="font-size:10px;font-style:normal;opacity:0.5;margin-left:6px">v3.0</span></div>
+    <div class="hdr-nav">
+      <span class="nav-btn" onclick="showApp('entry')">Daily Entry</span>
+      <span class="nav-btn" onclick="showApp('history')">Sales History</span>
+      <span class="nav-btn active">Analytics</span>
+      <span class="nav-btn" onclick="showApp('setup')">Setup</span>
+    </div>
+  </div>
+  
+  <div style="padding:clamp(14px,4vw,32px) clamp(12px,4vw,32px) 48px">
   <div class="pg-title">Sales Analytics</div>
   <div class="pg-sub">Trends, comparisons, and insights from your sales data.</div>
   
@@ -511,11 +526,26 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
   <div class="setup-card" style="margin-bottom:24px">
     <h3>📊 Sales Trends</h3>
     <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap">
-      <button class="nav-btn" id="trend-30d" onclick="updateTrendChart('30d')" style="padding:7px 14px;font-size:12px">Last 30 Days</button>
-      <button class="nav-btn active" id="trend-90d" onclick="updateTrendChart('90d')" style="padding:7px 14px;font-size:12px">Last 90 Days</button>
-      <button class="nav-btn" id="trend-year" onclick="updateTrendChart('year')" style="padding:7px 14px;font-size:12px">This Year</button>
+      <button class="nav-btn light" id="trend-week" onclick="updateTrendChart('week')" style="padding:7px 14px;font-size:12px">Last Week</button>
+      <button class="nav-btn light" id="trend-30d" onclick="updateTrendChart('30d')" style="padding:7px 14px;font-size:12px">Last 30 Days</button>
+      <button class="nav-btn light active" id="trend-90d" onclick="updateTrendChart('90d')" style="padding:7px 14px;font-size:12px">Last 90 Days</button>
+      <button class="nav-btn light" id="trend-year" onclick="updateTrendChart('year')" style="padding:7px 14px;font-size:12px">This Year</button>
+      <button class="nav-btn light" id="trend-custom" onclick="showCustomRange()" style="padding:7px 14px;font-size:12px">Custom Range</button>
     </div>
-    <canvas id="trend-canvas" style="max-height:320px;width:100%"></canvas>
+    <div id="custom-range-picker" style="display:none;margin-bottom:14px;padding:14px;background:var(--gl);border:1.5px solid var(--gm);border-radius:var(--r)">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:10px">
+        <div>
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--gd);margin-bottom:4px">From</label>
+          <input type="date" id="custom-from" style="width:100%;border:1.5px solid var(--gm);border-radius:6px;padding:7px 8px;font-size:12px">
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;font-weight:700;color:var(--gd);margin-bottom:4px">To</label>
+          <input type="date" id="custom-to" style="width:100%;border:1.5px solid var(--gm);border-radius:6px;padding:7px 8px;font-size:12px">
+        </div>
+      </div>
+      <button class="nav-btn light active" onclick="applyCustomRange()" style="padding:7px 16px;font-size:12px;width:100%">Apply Range</button>
+    </div>
+    <canvas id="trend-canvas" style="max-height:400px;width:100%"></canvas>
   </div>
 
   <!-- Daily Breakdown - Click to see top departments -->
@@ -594,6 +624,7 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
       </div>
     </div>
     <div id="month-comparison-result"></div>
+  </div>
   </div>
 </div>
 
@@ -1511,6 +1542,7 @@ function renderWeek() {
     var h = rec ? heat(ds, rec.totalSales) : '';
     var dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:' + dotColor(h) + '"></span>';
     var pc = (rec && rec.customers > 0) ? '$' + (rec.totalSales / rec.customers).toFixed(2) : '--';
+    var topJob = rec ? getTopJob(rec) : '--';
     
     if (rec) {
       tS += rec.totalSales;
@@ -1524,15 +1556,16 @@ function renderWeek() {
       '<td>' + (rec ? rec.customers : '--') + '</td>' +
       '<td>' + (rec ? fmt(rec.totalSales) : '--') + '</td>' +
       '<td>' + pc + '</td>' +
-      '<td>' + (rec ? rec.totalJobs : '--') + '</td></tr>';
+      '<td>' + (rec ? rec.totalJobs : '--') + '</td>' +
+      '<td style="font-weight:600;color:var(--grn)">' + topJob + '</td></tr>';
   }
   
   var avgC = tC > 0 ? '$' + (tS / tC).toFixed(2) : '--';
   var tbl = document.getElementById('week-tbl');
   if (tbl) {
-    tbl.innerHTML = '<thead><tr><th>Date</th><th>Status</th><th>Customers</th><th>Sales</th><th>$/Cust</th><th>Jobs</th></tr></thead>' +
+    tbl.innerHTML = '<thead><tr><th>Date</th><th>Status</th><th>Customers</th><th>Sales</th><th>$/Cust</th><th>Jobs</th><th>Top Job</th></tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
-      '<tfoot><tr><td colspan="2">TOTAL</td><td>' + tC + '</td><td>' + fmt(tS) + '</td><td>' + avgC + '</td><td>' + tJ + '</td></tr></tfoot>';
+      '<tfoot><tr><td colspan="2">TOTAL</td><td>' + tC + '</td><td>' + fmt(tS) + '</td><td>' + avgC + '</td><td>' + tJ + '</td><td>--</td></tr></tfoot>';
   }
 }
 
@@ -1910,11 +1943,11 @@ function initAnalytics() {
   populateDailyBreakdown();
 }
 
-function updateTrendChart(period) {
+function updateTrendChart(period, customFrom, customTo) {
   currentTrendPeriod = period;
   
   // Update button states
-  ['trend-30d', 'trend-90d', 'trend-year'].forEach(function(id) {
+  ['trend-week', 'trend-30d', 'trend-90d', 'trend-year', 'trend-custom'].forEach(function(id) {
     var btn = document.getElementById(id);
     if (btn) btn.classList.remove('active');
   });
@@ -1927,30 +1960,52 @@ function updateTrendChart(period) {
   var ctx = canvas.getContext('2d');
   var width = canvas.parentElement.clientWidth;
   canvas.width = width;
-  canvas.height = 320;
+  canvas.height = 400;
   
   // Get data for the period
   var today = new Date();
-  var days = period === '30d' ? 30 : period === '90d' ? 90 : 365;
   var data = [];
+  var days;
   
-  for (var i = days - 1; i >= 0; i--) {
-    var d = new Date(today);
-    d.setDate(d.getDate() - i);
-    var dateStr = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
-    var dayData = lookup[dateStr];
-    data.push({
-      date: dateStr,
-      sales: dayData ? dayData.totalSales : 0,
-      label: d.getDate() === 1 ? MONTHS_S[d.getMonth()] : d.getDate().toString()
-    });
+  if (period === 'custom' && customFrom && customTo) {
+    var fromDate = new Date(customFrom + 'T12:00:00');
+    var toDate = new Date(customTo + 'T12:00:00');
+    days = Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
+    
+    for (var i = 0; i < days; i++) {
+      var d = new Date(fromDate);
+      d.setDate(d.getDate() + i);
+      var dateStr = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+      var dayData = lookup[dateStr];
+      data.push({
+        date: dateStr,
+        sales: dayData ? dayData.totalSales : 0,
+        topJob: dayData ? getTopJob(dayData) : '',
+        label: d.getDate() === 1 ? MONTHS_S[d.getMonth()] : d.getDate().toString()
+      });
+    }
+  } else {
+    days = period === 'week' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365;
+    
+    for (var i = days - 1; i >= 0; i--) {
+      var d = new Date(today);
+      d.setDate(d.getDate() - i);
+      var dateStr = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+      var dayData = lookup[dateStr];
+      data.push({
+        date: dateStr,
+        sales: dayData ? dayData.totalSales : 0,
+        topJob: dayData ? getTopJob(dayData) : '',
+        label: d.getDate() === 1 ? MONTHS_S[d.getMonth()] : d.getDate().toString()
+      });
+    }
   }
   
   var maxSales = Math.max.apply(null, data.map(function(d) { return d.sales; }));
   if (maxSales === 0) maxSales = 1000;
   
   // Clear canvas
-  ctx.clearRect(0, 0, width, 320);
+  ctx.clearRect(0, 0, width, 400);
   
   // Draw grid and labels
   ctx.strokeStyle = '#e6e6e6';
@@ -1960,7 +2015,7 @@ function updateTrendChart(period) {
   
   var steps = 5;
   for (var i = 0; i <= steps; i++) {
-    var y = 30 + (260 * i / steps);
+    var y = 50 + (300 * i / steps);
     ctx.beginPath();
     ctx.moveTo(50, y);
     ctx.lineTo(width - 10, y);
@@ -1972,12 +2027,12 @@ function updateTrendChart(period) {
   
   // Draw bars
   var barWidth = (width - 60) / data.length;
-  var maxBarHeight = 260;
+  var maxBarHeight = 300;
   
   data.forEach(function(d, idx) {
     var x = 50 + idx * barWidth;
     var barH = (d.sales / maxSales) * maxBarHeight;
-    var y = 30 + (maxBarHeight - barH);
+    var y = 50 + (maxBarHeight - barH);
     
     // Bar color based on sales
     if (d.sales === 0) {
@@ -1994,18 +2049,83 @@ function updateTrendChart(period) {
     
     ctx.fillRect(x + 1, y, barWidth - 2, barH);
     
-    // Label every 7th day for 90d, every day for 30d, every 30th for year
+    // Draw top job label on top of bar if there's data
+    if (d.topJob && barH > 10) {
+      ctx.save();
+      ctx.translate(x + barWidth / 2, y - 5);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillStyle = '#141414';
+      ctx.font = 'bold 9px JustSans, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(d.topJob, 0, 0);
+      ctx.restore();
+    }
+    
+    // Label every 7th day for 90d, every day for 30d/week, every 30th for year
     var showLabel = false;
-    if (period === '30d') showLabel = true;
+    if (period === 'week' || period === '30d') showLabel = true;
     else if (period === '90d') showLabel = idx % 7 === 0;
+    else if (period === 'custom') showLabel = data.length <= 30 || idx % 7 === 0;
     else showLabel = idx % 30 === 0 || d.label.includes('Jan');
     
     if (showLabel) {
       ctx.fillStyle = '#666';
       ctx.font = '9px JustSans, sans-serif';
-      ctx.fillText(d.label, x, 305);
+      ctx.fillText(d.label, x, 380);
     }
   });
+}
+
+function getTopJob(dayData) {
+  if (!dayData.departments) return '';
+  
+  var topDept = null;
+  var maxSales = 0;
+  
+  for (var code in dayData.departments) {
+    var dept = dayData.departments[code];
+    if (dept.sales > maxSales) {
+      maxSales = dept.sales;
+      topDept = dept.name;
+    }
+  }
+  
+  return topDept || '';
+}
+
+function showCustomRange() {
+  var picker = document.getElementById('custom-range-picker');
+  if (picker) {
+    var isVisible = picker.style.display !== 'none';
+    picker.style.display = isVisible ? 'none' : 'block';
+    
+    if (!isVisible) {
+      // Set default dates
+      var today = new Date();
+      var weekAgo = new Date(today);
+      weekAgo.setDate(today.getDate() - 7);
+      
+      document.getElementById('custom-from').value = weekAgo.getFullYear() + '-' + pad2(weekAgo.getMonth() + 1) + '-' + pad2(weekAgo.getDate());
+      document.getElementById('custom-to').value = today.getFullYear() + '-' + pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
+    }
+  }
+}
+
+function applyCustomRange() {
+  var from = document.getElementById('custom-from').value;
+  var to = document.getElementById('custom-to').value;
+  
+  if (!from || !to) {
+    alert('Please select both start and end dates');
+    return;
+  }
+  
+  if (from > to) {
+    alert('Start date must be before end date');
+    return;
+  }
+  
+  updateTrendChart('custom', from, to);
 }
 
 function populateDailyBreakdown() {

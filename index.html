@@ -1562,34 +1562,40 @@ function syncFromSheets() {
       if (resp.status !== 'ok') throw new Error('Unexpected response from server');
       
       var rows = resp.rows || [];
+      
+      // CRITICAL: If Google Sheets is empty, clear everything
       if (rows.length === 0) {
+        salesData = [];
+        localStorage.setItem('tfg_data', '[]');
+        lookup = buildLookup();
+        render();
         setBanner('local', 'Google Sheets is empty — submit your first day to start syncing');
         return;
       }
       
-      var sheetsMap = {};
+      // CRITICAL: Replace local data with Google Sheets data (no merging)
+      var sheetsData = [];
       rows.forEach(function(r) {
         var d = String(r.date || '').trim();
         if (!d.match(/^\d{4}-\d{2}-\d{2}$/)) return;
         
-        sheetsMap[d] = {
+        sheetsData.push({
           date: d,
           customers: parseFloat(r.customers) || 0,
           totalJobs: parseFloat(r.totalJobs) || 0,
           totalSales: parseFloat(r.totalSales) || 0,
+          grossSales: parseFloat(r.grossSales) || parseFloat(r.totalSales) || 0,
+          tax: parseFloat(r.tax) || 0,
+          netSales: parseFloat(r.netSales) || parseFloat(r.totalSales) || 0,
           cash: parseFloat(r.cash) || 0,
           eftpos: parseFloat(r.eftpos) || 0,
           notes: r.notes || '',
           departments: r.departments || {}
-        };
+        });
       });
       
-      var local = JSON.parse(localStorage.getItem('tfg_data') || '[]');
-      local.forEach(function(r) {
-        if (r.date && !sheetsMap[r.date]) sheetsMap[r.date] = r;
-      });
-      
-      salesData = Object.values(sheetsMap).sort(function(a, b) {
+      // Replace salesData with ONLY what's in Google Sheets
+      salesData = sheetsData.sort(function(a, b) {
         return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
       });
       
@@ -1602,6 +1608,7 @@ function syncFromSheets() {
       setBanner('synced', '✓ Synced — ' + salesData.length + ' days loaded from Google Sheets — ' + time);
     })
     .catch(function(err) {
+      // On error, show local data but warn user
       salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
       lookup = buildLookup();
       render();

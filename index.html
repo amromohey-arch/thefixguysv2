@@ -883,21 +883,34 @@ async function scanReceipt() {
   
   var prompt = "CRITICAL: You must respond with ONLY valid JSON. No explanations, no markdown, no text - ONLY the JSON object.\n\nThis is a till receipt from The Fix Guys shop in Erina Fair, Australia. Departments: D01=Batteries, D02=Watch Bands, D03=Transponders, D04=Remotes, D05=Glue, D06=House Keys, D07=Heels & Soles, D08=Patching, D09=Giftware, D10=Engraving, D11=Shoecare, D12=Shell, D13=Sharpening, D14=Watch Repairs, D15=Miscellaneous, D16=Stitching, D17=Stitch.\n\nExtract:\n1) Each department's qty (Q number) and amount (* dollar amount)\n2) THREE totals: NET1 or 'PAID TL' (gross sales BEFORE tax), VAT 1 or TTL TAX (tax amount), and NET (sales AFTER tax)\n3) CASH, CREDIT1/EFTPOS and GUEST count\n\nReturn ONLY this JSON structure (no other text):\n{\"departments\":{\"D01\":{\"qty\":7,\"amount\":170.00}},\"grossSales\":2360.00,\"tax\":214.55,\"netSales\":2145.45,\"cash\":487.75,\"eftpos\":1872.25,\"customers\":65}\n\nIf receipt is unclear, return: {\"departments\":{},\"grossSales\":0,\"tax\":0,\"netSales\":0,\"cash\":0,\"eftpos\":0,\"customers\":0}";
   
-  // Use Gemini 1.5 Flash (the only reliable free-tier model)
+  // April 2026 - Current Gemini models (1.5 retired)
   var models = [
-    {name: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash'}
+    {name: 'gemini-3-flash-preview', label: 'Gemini 3 Flash (Preview)'},
+    {name: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Stable)'},
+    {name: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (Preview)'},
+    {name: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (Stable)'}
   ];
   
-  for (var i = 0; i < models.length; i++) {
-    var model = models[i];
+  var maxAttemptsPerModel = 10;
+  var delayBetweenAttempts = 5000; // 5 seconds
+  var modelIndex = 0;
+  var attemptCount = 0;
+  
+  async function tryNextModel() {
+    if (attemptCount >= maxAttemptsPerModel) {
+      // Move to next model
+      modelIndex = (modelIndex + 1) % models.length;
+      attemptCount = 0;
+    }
+    
+    var model = models[modelIndex];
+    attemptCount++;
+    
+    btn.innerHTML = '<span class="spinner"></span>' + model.label + ' (attempt ' + attemptCount + '/10)';
     
     try {
-      if (i > 0) {
-        btn.innerHTML = '<span class="spinner"></span>Trying backup model...';
-      }
-      
       var response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/' + model.name + ':generateContent?key=' + geminiKey,
+        'https://generativelanguage.googleapis.com/v1/models/' + model.name + ':generateContent?key=' + geminiKey,
         {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -915,65 +928,32 @@ async function scanReceipt() {
       
       var data = await response.json();
       
-      // Check for high demand / rate limit errors
       if (data.error) {
-        var msg = data.error.message || '';
-        var isOverloaded = msg.includes('high demand') || 
-                          msg.includes('quota') || 
-                          msg.includes('RESOURCE_EXHAUSTED') ||
-                          response.status === 429 || 
-                          response.status === 503;
-        
-        if (isOverloaded && i < models.length - 1) {
-          // Try next model
-          continue;
-        }
-        
         throw new Error(data.error.message);
       }
       
       var text = data.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
-      
-      // Try to extract JSON from response
       var m = text.match(/{[\s\S]*}/);
+      
       if (!m) {
-        // Log what we got for debugging
-        console.error('AI Response (no JSON found):', text);
-        throw new Error('AI did not return JSON. Receipt may be unclear. Try:\n1. Take a clearer photo\n2. Ensure good lighting\n3. Capture the full receipt\n\nAI said: ' + text.substring(0, 100));
+        throw new Error('No JSON in response');
       }
       
-      try {
-        scannedData = JSON.parse(m[0]);
-        showScanResult(scannedData);
-        
-        // Success! Show which model was used
-        if (i > 0) {
-          console.log('✓ Scanned with ' + model.label);
-        }
-        
-        return; // Exit function on success
-      } catch (parseErr) {
-        // JSON was found but invalid
-        console.error('Invalid JSON from AI:', m[0]);
-        throw new Error('AI returned invalid data. Try a clearer photo or enter manually.');
-      }
+      scannedData = JSON.parse(m[0]);
+      showScanResult(scannedData);
+      console.log('✓ Success with ' + model.label + ' on attempt ' + attemptCount);
+      return;
       
     } catch (err) {
-      // If this is the last model, show error
-      if (i === models.length - 1) {
-        btn.disabled = false;
-        btn.innerHTML = 'Scan Receipt with AI →';
-        
-        var errorMsg = err.message || 'Unknown error';
-        if (errorMsg.includes('high demand') || errorMsg.includes('quota')) {
-          alert('⚠️ AI service is very busy right now.\n\nPlease wait 2-3 minutes and try again, or enter the data manually below.');
-        } else {
-          alert('Scan failed: ' + errorMsg);
-        }
-      }
-      // Otherwise continue to next model
+      console.log('Attempt ' + attemptCount + ' failed for ' + model.label + ': ' + err.message);
+      
+      // Wait 5 seconds and try again
+      await new Promise(resolve => setTimeout(resolve, delayBetweenAttempts));
+      return tryNextModel();
     }
   }
+  
+  await tryNextModel();
 }
 
 function showScanResult(data) {

@@ -883,10 +883,9 @@ async function scanReceipt() {
   
   var prompt = "CRITICAL: You must respond with ONLY valid JSON. No explanations, no markdown, no text - ONLY the JSON object.\n\nThis is a till receipt from The Fix Guys shop in Erina Fair, Australia. Departments: D01=Batteries, D02=Watch Bands, D03=Transponders, D04=Remotes, D05=Glue, D06=House Keys, D07=Heels & Soles, D08=Patching, D09=Giftware, D10=Engraving, D11=Shoecare, D12=Shell, D13=Sharpening, D14=Watch Repairs, D15=Miscellaneous, D16=Stitching, D17=Stitch.\n\nExtract:\n1) Each department's qty (Q number) and amount (* dollar amount)\n2) THREE totals: NET1 or 'PAID TL' (gross sales BEFORE tax), VAT 1 or TTL TAX (tax amount), and NET (sales AFTER tax)\n3) CASH, CREDIT1/EFTPOS and GUEST count\n\nReturn ONLY this JSON structure (no other text):\n{\"departments\":{\"D01\":{\"qty\":7,\"amount\":170.00}},\"grossSales\":2360.00,\"tax\":214.55,\"netSales\":2145.45,\"cash\":487.75,\"eftpos\":1872.25,\"customers\":65}\n\nIf receipt is unclear, return: {\"departments\":{},\"grossSales\":0,\"tax\":0,\"netSales\":0,\"cash\":0,\"eftpos\":0,\"customers\":0}";
   
-  // Use valid Gemini Flash models
+  // Use Gemini 1.5 Flash (the only reliable free-tier model)
   var models = [
-    {name: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash'},
-    {name: 'gemini-1.5-flash-8b', label: 'Gemini 1.5 Flash 8B (lighter backup)'}
+    {name: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash'}
   ];
   
   for (var i = 0; i < models.length; i++) {

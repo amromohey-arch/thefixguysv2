@@ -914,6 +914,8 @@ async function scanReceipt() {
       );
       
       var data = await response.json();
+      console.log('API Response status:', response.status);
+      console.log('API Response data:', JSON.stringify(data).substring(0, 300));
       
       // Check for errors
       if (data.error) {
@@ -923,12 +925,21 @@ async function scanReceipt() {
         throw new Error(data.error.message);
       }
       
+      // Check if response has expected structure
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+        console.error('Unexpected API response structure:', data);
+        throw new Error('API returned unexpected structure');
+      }
+      
       // Extract JSON from response
       var text = data.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
+      console.log('AI Response text:', text.substring(0, 200)); // Log first 200 chars
+      
       var m = text.match(/{[\s\S]*}/);
       
       if (!m) {
-        throw new Error('AI did not return valid JSON');
+        console.error('No JSON found in response. Full text:', text);
+        throw new Error('AI did not return valid JSON. Response: ' + text.substring(0, 100));
       }
       
       scannedData = JSON.parse(m[0]);
@@ -944,12 +955,10 @@ async function scanReceipt() {
         btn.disabled = false;
         btn.innerHTML = 'Scan Receipt with AI →';
         
-        alert('⚠️ All AI models failed to scan the receipt.\n\n' +
-          'This could mean:\n' +
-          '1. Your API key is invalid or expired\n' +
-          '2. The models are unavailable right now\n' +
-          '3. The receipt image is unclear\n\n' +
-          'Please check your API key in Setup, or enter data manually below.');
+        // Show the ACTUAL error message so user knows what's wrong
+        alert('⚠️ Scan failed with both models.\n\n' +
+          'Error: ' + err.message + '\n\n' +
+          'Check browser console (F12 → Console) for full details, or enter data manually below.');
       }
     }
   }

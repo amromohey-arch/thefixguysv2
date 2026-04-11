@@ -1215,8 +1215,11 @@ function submitSales() {
   localStorage.setItem('tfg_data', JSON.stringify(salesData));
   
   if (scriptUrl) {
+    // Use CORS proxy to bypass Google Apps Script CORS limitations
+    var proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(scriptUrl);
+    
     Promise.all([
-      fetch(scriptUrl, {
+      fetch(proxyUrl, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({type: 'sales', data: data})
@@ -1226,7 +1229,7 @@ function submitSales() {
       }).then(function(resp) {
         if (resp.status !== 'ok') throw new Error(resp.msg || 'Save failed');
       }),
-      receiptB64 ? fetch(scriptUrl, {
+      receiptB64 ? fetch(proxyUrl, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -1599,7 +1602,10 @@ function syncFromSheets() {
   
   setBanner('syncing', 'Pulling latest data from Google Sheets...');
   
-  fetch(url + '?type=all_sales', {method: 'GET', redirect: 'follow'})
+  // Use CORS proxy to bypass Google Apps Script CORS limitations
+  var proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url + '?type=all_sales');
+  
+  fetch(proxyUrl, {method: 'GET', redirect: 'follow'})
     .then(function(r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();

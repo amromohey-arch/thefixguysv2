@@ -121,6 +121,57 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.4); border-top-color:white; border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; margin-right:6px; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
+.refresh-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight:600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.refresh-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); }
+.refresh-btn:active { transform: translateY(0); }
+.refresh-btn.spinning svg { animation: spin 1s linear infinite; }
+
+.back-to-top {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 50px;
+  height: 50px;
+  background: var(--red);
+  color: var(--wh);
+  border: none;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s;
+  z-index: 1000;
+}
+.back-to-top.show {
+  opacity: 1;
+  visibility: visible;
+}
+.back-to-top:hover {
+  background: var(--red-dk);
+  transform: translateY(-3px);
+}
+
+@media (max-width: 640px) {
+  .refresh-btn { font-size: 0; padding: 10px 12px; }
+  .refresh-btn svg { margin: 0; }
+  .refresh-btn span { display: none; }
+}
+
 .receipt-preview { display:none; width:100%; border-radius:var(--r); max-height:300px; object-fit:contain; background:#000; margin-bottom:14px; }
 .receipt-preview.show { display:block; }
 
@@ -251,6 +302,7 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
 </style>
 </head>
 <body>
+<button class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 
 <div id="app-entry">
 <div class="hdr">
@@ -374,31 +426,11 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
   <div class="pg-title">Setup</div>
   <div class="pg-sub">Connect to Google Sheets and Google AI.</div>
   <div class="setup-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="var b=document.getElementById('sheets-body');var a=document.getElementById('sheets-arrow');b.style.display=b.style.display==='none'?'block':'none';a.textContent=b.style.display==='none'?'▶':'▼'">
-      <h3 style="margin-bottom:0">Google Sheets + Drive</h3>
-      <span id="sheets-arrow" style="font-size:13px;color:var(--gd)">▶</span>
-    </div>
-    <div id="sheets-body" style="display:none;margin-top:14px">
-      <div class="setup-steps">
-        <ol>
-          <li>Open <strong>sheets.google.com</strong> → create a new sheet</li>
-          <li>Click <strong>Extensions → Apps Script</strong></li>
-          <li>Select all → delete → paste the script below</li>
-          <li>Save (Ctrl+S) → Deploy → New Deployment</li>
-          <li>Type: <strong>Web App</strong> → Access: <strong>Anyone</strong> → Deploy</li>
-          <li>Copy the Web App URL → paste below</li>
-        </ol>
-      </div>
-      <div class="code-block">
-        <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Apps Script Code</div>
-        <pre id="script-code"></pre>
-        <button class="copy-btn" onclick="copyScript()">Copy</button>
-      </div>
-      <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gd);margin-bottom:5px">Web App URL</label>
-      <input type="url" class="url-inp" id="url-inp" placeholder="https://script.google.com/macros/s/.../exec">
-      <br><button class="btn-save" onclick="saveUrl()">Save URL</button>
-      <span class="saved-lbl" id="saved-lbl">✓ Saved</span>
-    </div>
+    <h3>Google Sheets Connection</h3>
+    <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gd);margin-bottom:5px">Web App URL</label>
+    <input type="url" class="url-inp" id="url-inp" placeholder="https://script.google.com/macros/s/.../exec">
+    <br><button class="btn-save" onclick="saveUrl()">Save URL</button>
+    <span class="saved-lbl" id="saved-lbl">✓ Saved</span>
   </div>
   <div class="setup-card">
     <h3>Receipt Scanner — Google AI Key</h3>
@@ -430,8 +462,17 @@ body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%
     <span id="sync-icon">⏳</span>
     <span id="sync-text">Loading...</span>
   </div>
-  <div id="range-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-    <button id="range-btn" onclick="toggleRange()" style="display:flex;align-items:center;gap:7px;padding:7px 14px;background:var(--wh);border:1.5px solid var(--gm);border-radius:var(--r);cursor:pointer;font-size:12px;font-weight:600;color:var(--gd);font-family:var(--fb)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+      </svg>
+      <span>Refresh</span>
+    </button>
+    <div id="range-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    </div>
+  </div>    
+  <button id="range-btn" onclick="toggleRange()" style="display:flex;align-items:center;gap:7px;padding:7px 14px;background:var(--wh);border:1.5px solid var(--gm);border-radius:var(--r);cursor:pointer;font-size:12px;font-weight:600;color:var(--gd);font-family:var(--fb)">
       <div class="r-dot" style="width:8px;height:8px;border-radius:50%;background:var(--gm)"></div>Select date range
     </button>
     <span id="range-hint" style="font-size:11px;color:var(--gd);font-style:italic;display:none">Click start, then end date</span>
@@ -1350,223 +1391,6 @@ function showGeminiStatus() {
     : '<div class="conn-warn">⚠️ No key. Get one at aistudio.google.com/apikey</div>';
 }
 
-function copyScript() {
-  navigator.clipboard.writeText(document.getElementById('script-code').textContent)
-    .then(function() { alert('Copied! Paste into Apps Script editor.'); });
-}
-
-function setScriptCode() {
-  document.getElementById('script-code').textContent = 
-'// ═══════════════════════════════════════════════════\n' +
-'// TFG Sales App — Apps Script v2.9 (Debug)\n' +
-'// ═══════════════════════════════════════════════════\n' +
-'\n' +
-'function toYMD(val) {\n' +
-'  if (!val) return \'\';\n' +
-'  if (val instanceof Date) {\n' +
-'    var y = val.getFullYear();\n' +
-'    var m = String(val.getMonth() + 1).padStart(2, \'0\');\n' +
-'    var d = String(val.getDate()).padStart(2, \'0\');\n' +
-'    return y + \'-\' + m + \'-\' + d;\n' +
-'  }\n' +
-'  var s = String(val);\n' +
-'  var match = s.match(/(\\d{4})-(\\d{2})-(\\d{2})/);\n' +
-'  return match ? match[0] : s.trim();\n' +
-'}\n' +
-'\n' +
-'function doGet(e) {\n' +
-'  try {\n' +
-'    var ss    = SpreadsheetApp.getActiveSpreadsheet();\n' +
-'    var sheet = ss.getSheetByName(\'Sales\');\n' +
-'\n' +
-'    if (!sheet) {\n' +
-'      return ContentService\n' +
-'        .createTextOutput(JSON.stringify({ error: \'Sheet Sales not found\' }))\n' +
-'        .setMimeType(ContentService.MimeType.JSON);\n' +
-'    }\n' +
-'\n' +
-'    var lastRow = sheet.getLastRow();\n' +
-'    Logger.log(\'Last row: \' + lastRow);\n' +
-'    \n' +
-'    if (lastRow < 2) {\n' +
-'      return ContentService\n' +
-'        .createTextOutput(JSON.stringify({ status: \'ok\', rows: [] }))\n' +
-'        .setMimeType(ContentService.MimeType.JSON);\n' +
-'    }\n' +
-'\n' +
-'    var data    = sheet.getDataRange().getValues();\n' +
-'    var headers = data[0].map(function(h) { return String(h).trim(); });\n' +
-'\n' +
-'    // DEBUG: Log first data row\n' +
-'    if (data.length > 1) {\n' +
-'      Logger.log(\'First data row:\');\n' +
-'      Logger.log(\'  Raw value in A2: \' + data[1][0]);\n' +
-'      Logger.log(\'  Type: \' + typeof data[1][0]);\n' +
-'      Logger.log(\'  Is Date: \' + (data[1][0] instanceof Date));\n' +
-'      if (data[1][0] instanceof Date) {\n' +
-'        Logger.log(\'  Date value: \' + data[1][0].toISOString());\n' +
-'      }\n' +
-'      Logger.log(\'  After toYMD: \' + toYMD(data[1][0]));\n' +
-'    }\n' +
-'\n' +
-'    var DEPT_NAMES = {\n' +
-'      D01:\'Batteries\', D02:\'Watch Bands\', D03:\'Transponders\', D04:\'Remotes\',\n' +
-'      D05:\'Glue\', D06:\'House Keys\', D07:\'Heels & Soles\', D08:\'Patching\',\n' +
-'      D09:\'Giftware\', D10:\'Engraving\', D11:\'Shoecare\', D12:\'Shell\',\n' +
-'      D13:\'Sharpening\', D14:\'Watch Repairs\', D15:\'Miscellaneous\',\n' +
-'      D16:\'Stitching\', D17:\'Stitch\'\n' +
-'    };\n' +
-'    var CODES = [\'D01\',\'D02\',\'D03\',\'D04\',\'D05\',\'D06\',\'D07\',\'D08\',\'D09\',\n' +
-'                 \'D10\',\'D11\',\'D12\',\'D13\',\'D14\',\'D15\',\'D16\',\'D17\'];\n' +
-'\n' +
-'    var idx = {};\n' +
-'    headers.forEach(function(h, i) { idx[h] = i; });\n' +
-'\n' +
-'    var rows = [];\n' +
-'    for (var i = 1; i < data.length; i++) {\n' +
-'      var row = data[i];\n' +
-'      if (!row[0]) {\n' +
-'        Logger.log(\'Row \' + (i+1) + \': Skipped - empty first cell\');\n' +
-'        continue;\n' +
-'      }\n' +
-'\n' +
-'      var dateStr = toYMD(row[0]);\n' +
-'      Logger.log(\'Row \' + (i+1) + \': dateStr = \"\' + dateStr + \'\"\');\n' +
-'      \n' +
-'      if (!dateStr || !dateStr.match(/^\\d{4}-\\d{2}-\\d{2}$/)) {\n' +
-'        Logger.log(\'Row \' + (i+1) + \': REJECTED - invalid date format\');\n' +
-'        continue;\n' +
-'      }\n' +
-'\n' +
-'      Logger.log(\'Row \' + (i+1) + \': ACCEPTED\');\n' +
-'\n' +
-'      var departments = {};\n' +
-'      CODES.forEach(function(code) {\n' +
-'        var jIdx = idx[code + \' Jobs\'];\n' +
-'        var sIdx = idx[code + \' $\'];\n' +
-'        var jobs  = jIdx !== undefined ? (parseFloat(row[jIdx])  || 0) : 0;\n' +
-'        var sales = sIdx !== undefined ? (parseFloat(row[sIdx]) || 0) : 0;\n' +
-'        if (jobs > 0 || sales > 0) {\n' +
-'          departments[code] = {\n' +
-'            name:  DEPT_NAMES[code] || code,\n' +
-'            jobs:  jobs,\n' +
-'            sales: sales\n' +
-'          };\n' +
-'        }\n' +
-'      });\n' +
-'\n' +
-'      rows.push({\n' +
-'        date:       dateStr,\n' +
-'        customers:  parseFloat(idx[\'Customers\']  !== undefined ? row[idx[\'Customers\']]  : 0) || 0,\n' +
-'        totalJobs:  parseFloat(idx[\'Total Jobs\']  !== undefined ? row[idx[\'Total Jobs\']]  : 0) || 0,\n' +
-'        totalSales: parseFloat(idx[\'Total Sales\'] !== undefined ? row[idx[\'Total Sales\']] : 0) || 0,\n' +
-'        cash:       parseFloat(idx[\'Cash\']        !== undefined ? row[idx[\'Cash\']]        : 0) || 0,\n' +
-'        eftpos:     parseFloat(idx[\'EFTPOS\']       !== undefined ? row[idx[\'EFTPOS\']]       : 0) || 0,\n' +
-'        notes:      idx[\'Notes\'] !== undefined ? String(row[idx[\'Notes\']] || \'\') : \'\',\n' +
-'        departments: departments\n' +
-'      });\n' +
-'    }\n' +
-'\n' +
-'    Logger.log(\'Total valid rows found: \' + rows.length);\n' +
-'\n' +
-'    return ContentService\n' +
-'      .createTextOutput(JSON.stringify({ status: \'ok\', rows: rows }))\n' +
-'      .setMimeType(ContentService.MimeType.JSON);\n' +
-'\n' +
-'  } catch(err) {\n' +
-'    Logger.log(\'ERROR: \' + err.toString());\n' +
-'    return ContentService\n' +
-'      .createTextOutput(JSON.stringify({ status: \'error\', msg: err.toString() }))\n' +
-'      .setMimeType(ContentService.MimeType.JSON);\n' +
-'  }\n' +
-'}\n' +
-'\n' +
-'function doPost(e) {\n' +
-'  try {\n' +
-'    var payload = JSON.parse(e.postData.contents);\n' +
-'\n' +
-'    if (payload.type === \'image\') {\n' +
-'      var folders = DriveApp.getFoldersByName(\'TFG Daily Receipts\');\n' +
-'      var folder  = folders.hasNext()\n' +
-'                  ? folders.next()\n' +
-'                  : DriveApp.createFolder(\'TFG Daily Receipts\');\n' +
-'      var bytes  = Utilities.base64Decode(payload.imageData);\n' +
-'      var blob   = Utilities.newBlob(bytes, \'image/jpeg\', payload.filename || \'receipt.jpg\');\n' +
-'      folder.createFile(blob);\n' +
-'      return ContentService\n' +
-'        .createTextOutput(JSON.stringify({ status: \'ok\', type: \'image\' }))\n' +
-'        .setMimeType(ContentService.MimeType.JSON);\n' +
-'    }\n' +
-'\n' +
-'    var data  = payload.data || payload;\n' +
-'    var ss    = SpreadsheetApp.getActiveSpreadsheet();\n' +
-'    var sheet = ss.getSheetByName(\'Sales\') || ss.insertSheet(\'Sales\');\n' +
-'\n' +
-'    var CODES = [\'D01\',\'D02\',\'D03\',\'D04\',\'D05\',\'D06\',\'D07\',\'D08\',\'D09\',\n' +
-'                 \'D10\',\'D11\',\'D12\',\'D13\',\'D14\',\'D15\',\'D16\',\'D17\'];\n' +
-'    var depts = data.departments || {};\n' +
-'\n' +
-'    if (sheet.getLastRow() === 0) {\n' +
-'      var h = [\'Date\',\'Day\',\'Customers\',\'Total Jobs\',\'Total Sales\',\n' +
-'               \'Cash\',\'EFTPOS\',\'Notes\',\'Submitted\'];\n' +
-'      CODES.forEach(function(c) { h.push(c + \' Jobs\'); h.push(c + \' $\'); });\n' +
-'      sheet.appendRow(h);\n' +
-'    }\n' +
-'\n' +
-'    var dateStr = toYMD(data.date || \'\');\n' +
-'    if (!dateStr) throw new Error(\'Invalid date: \' + data.date);\n' +
-'\n' +
-'    var d  = new Date(dateStr + \'T12:00:00\');\n' +
-'    var DN = [\'Sun\',\'Mon\',\'Tue\',\'Wed\',\'Thu\',\'Fri\',\'Sat\'];\n' +
-'\n' +
-'    var row = [\n' +
-'      dateStr,\n' +
-'      DN[d.getDay()],\n' +
-'      data.customers  || 0,\n' +
-'      data.totalJobs  || 0,\n' +
-'      data.totalSales || 0,\n' +
-'      data.cash       || 0,\n' +
-'      data.eftpos     || 0,\n' +
-'      data.notes      || \'\',\n' +
-'      data.submittedAt || \'\'\n' +
-'    ];\n' +
-'    CODES.forEach(function(c) {\n' +
-'      var dept = depts[c] || {};\n' +
-'      row.push(dept.jobs  || 0);\n' +
-'      row.push(dept.sales || 0);\n' +
-'    });\n' +
-'\n' +
-'    var existingRow = -1;\n' +
-'    var lastRow = sheet.getLastRow();\n' +
-'    if (lastRow > 1) {\n' +
-'      var dates = sheet.getRange(2, 1, lastRow - 1, 1).getValues();\n' +
-'      for (var i = 0; i < dates.length; i++) {\n' +
-'        if (toYMD(dates[i][0]) === dateStr) {\n' +
-'          existingRow = i + 2;\n' +
-'          break;\n' +
-'        }\n' +
-'      }\n' +
-'    }\n' +
-'\n' +
-'    if (existingRow > 0) {\n' +
-'      sheet.getRange(existingRow, 1, 1, row.length).setValues([row]);\n' +
-'    } else {\n' +
-'      sheet.appendRow(row);\n' +
-'    }\n' +
-'\n' +
-'    return ContentService\n' +
-'      .createTextOutput(JSON.stringify({ status: \'ok\', type: \'sales\' }))\n' +
-'      .setMimeType(ContentService.MimeType.JSON);\n' +
-'\n' +
-'  } catch(err) {\n' +
-'    return ContentService\n' +
-'      .createTextOutput(JSON.stringify({ status: \'error\', msg: err.toString() }))\n' +
-'      .setMimeType(ContentService.MimeType.JSON);\n' +
-'  }\n' +
-'}\n' +
-'\n';
-}
-
 // ── SYNC ───────────────────────────────────────────────────────────────────
 function setBanner(type, msg) {
   var banner = document.getElementById('sync-banner');
@@ -2125,6 +1949,35 @@ document.addEventListener('click', function(e) {
     dayClick(el.getAttribute('data-ds'));
   }
 });
+// Manual refresh function
+function manualRefresh() {
+  var btn = document.getElementById('refreshBtn');
+  if (btn) {
+    btn.classList.add('spinning');
+    btn.disabled = true;
+  }
+  
+  syncFromSheets();
+  
+  setTimeout(function() {
+    if (btn) {
+      btn.classList.remove('spinning');
+      btn.disabled = false;
+    }
+  }, 1000);
+}
+
+// Back to top button visibility
+window.addEventListener('scroll', function() {
+  var btn = document.getElementById('backToTop');
+  if (btn) {
+    if (window.pageYOffset > 300) {
+      btn.classList.add('show');
+    } else {
+      btn.classList.remove('show');
+    }
+  }
+});
 
 // ── INITIALIZATION ─────────────────────────────────────────────────────────
 window.onload = function() {
@@ -2133,7 +1986,6 @@ window.onload = function() {
   updateDayLabel();
   buildDeptRows();
   checkSetupWarn();
-  setScriptCode();
   
   var urlInp = document.getElementById('url-inp');
   if (urlInp && scriptUrl) urlInp.value = scriptUrl;

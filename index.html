@@ -17,7 +17,7 @@ html { -webkit-text-size-adjust:100%; }
   --fd:'Glancyr',Georgia,serif; --fb:'JustSans','Helvetica Neue',helvetica,arial,sans-serif;
   --r:10px; --rl:16px; --sh:0 2px 12px rgba(0,0,0,0.06);
 }
-<body>{ background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%; }
+body { background:var(--bg); font-family:var(--fb); color:var(--blk); width:100%; }
 
 .hdr { background:var(--dark); padding:12px 18px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
 .hdr-brand { font-family:var(--fd); font-style:italic; font-size:clamp(15px,3vw,19px); color:var(--wh); }
@@ -459,8 +459,8 @@ html { -webkit-text-size-adjust:100%; }
     <button class="vt-btn" id="vt-year" onclick="setView('year')">Year</button>
   </div>
   <div id="sync-banner" style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:var(--r);margin-bottom:14px;font-size:13px;font-weight:600;font-family:var(--fb);background:var(--gl);border:1.5px solid var(--gm);color:var(--gd)">
-    <span id="sync-text">Loading...</span>
     <span id="sync-icon">⏳</span>
+    <span id="sync-text">Loading...</span>
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
     <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">
@@ -561,6 +561,7 @@ html { -webkit-text-size-adjust:100%; }
     </div>
     <div class="year-grid" id="year-grid"></div>
   </div>
+</div>
 </div>
 
 <div class="page" id="pg-analytics" style="display:none">
@@ -1995,46 +1996,9 @@ window.onload = function() {
   showConnStatus();
   showGeminiStatus();
   
-  // 1. Load the existing local data so the screen isn't empty
   salesData = JSON.parse(localStorage.getItem('tfg_data') || '[]');
   lookup = buildLookup();
-
-  // 2. TRIGGER FETCH: Automatically pull the latest data from Google Sheets
-  if (scriptUrl) {
-    refreshDataFromServer();
-  }
 };
-
-/**
- * New function to bypass cache and get fresh data
- */
-function refreshDataFromServer() {
-  // Add a timestamp (?t=...) to the URL to bypass the "local server" or browser cache
-  var cacheBuster = scriptUrl + (scriptUrl.includes('?') ? '&' : '?') + 't=' + new Date().getTime();
-
-  fetch(cacheBuster)
-    .then(response => response.json())
-    .then(data => {
-      // Overwrite the old data with the fresh Google Sheets data
-      salesData = data;
-      localStorage.setItem('tfg_data', JSON.stringify(data));
-      
-      // Re-build the UI with the new data
-      lookup = buildLookup();
-      buildDeptRows();
-      
-      // Update the banner so you know it's a live sync
-      var now = new Date();
-      var time = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
-      setBanner('synced', '✓ Live Sync — ' + salesData.length + ' days loaded — ' + time);
-      
-      console.log("Cache cleared: Data updated from Google Sheets.");
-    })
-    .catch(err => {
-      console.error("Sync failed, using offline data:", err);
-      setBanner('error', 'Sync Failed - Viewing Offline Data');
-    });
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ANALYTICS FUNCTIONS
